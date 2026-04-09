@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>山登りで見る微分の使い道 — 局所的な傾きから次の一歩を決める</title>
+  <link rel="stylesheet" href="../assets/css/course.css" />
+  <style>
+
+:root {
+  --current: #c83d3d;
+  --current-soft: #f6dddd;
+  --arrow: #c83d3d;
+  --arrow-outline: #ffffff;
+  --contour: rgba(255, 255, 255, 0.98);
+  --contour-shadow: rgba(0, 0, 0, 0.18);
+  --summit-bg: #eef6e8;
+  --summit-border: #b9d3a5;
+}
+.climb-controls {
+  grid-template-columns: minmax(280px, 1.7fr) auto auto auto;
+}
+.control-wide { min-width: 0; }
+.control-actions {
+  align-self: stretch;
+  justify-content: end;
+}
+.control-actions .button-row {
+  margin-top: 0;
+  height: 100%;
+  align-items: end;
+}
+button.button {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+}
+button.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+  background: #dcdcdc;
+  border-color: #d0d0d0;
+  color: #666666;
+}
+.status-badge {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #ffffff;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+.status-badge.is-summit {
+  background: var(--summit-bg);
+  border-color: var(--summit-border);
+}
+.canvas-panel .panel-body {
+  padding-top: 10px;
+}
+.canvas-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 0 0 14px;
+}
+canvas {
+  display: block;
+  width: min(100%, 620px);
+  aspect-ratio: 1 / 1;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #ffffff;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin: 0 0 12px;
+  color: #333333;
+  font-size: 0.93rem;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-dot,
+.legend-line,
+.legend-arrow {
+  display: inline-block;
+  flex: 0 0 auto;
+}
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--current);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14);
+}
+.legend-line {
+  position: relative;
+  width: 20px;
+  height: 10px;
+}
+.legend-line::before,
+.legend-line::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top: 1px solid rgba(0, 0, 0, 0.22);
+}
+.legend-line::after {
+  border-top-width: 2px;
+  border-top-color: rgba(255, 255, 255, 0.98);
+}
+.legend-arrow {
+  position: relative;
+  width: 20px;
+  height: 12px;
+}
+.legend-arrow::before,
+.legend-arrow::after {
+  content: "";
+  position: absolute;
+  inset: 5px 2px auto 2px;
+  height: 2px;
+  background: var(--arrow);
+}
+.legend-arrow::after {
+  width: 8px;
+  height: 8px;
+  inset: 2px 2px auto auto;
+  background: transparent;
+  border-top: 2px solid var(--arrow);
+  border-right: 2px solid var(--arrow);
+  transform: rotate(45deg);
+}
+@media (max-width: 960px) {
+  .climb-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+  .control-actions {
+    justify-content: start;
+  }
+}
+@media (max-width: 720px) {
+  .climb-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+  </style>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container">
+      <p class="site-eyebrow">数理科学 I</p>
+      <h1 class="site-title">山登りで見る微分の使い道</h1>
+      <p class="site-lead">
+        今いる場所の周辺における傾きだけを手がかりにして，
+        少しずつ山の高い方へ進んでいく様子を観察するデモです．
+        局所的な情報を繰り返し使うだけでも，全体として高い場所へ向かえることが分かります．
+      </p>
+    </div>
+  </header>
+
+  <main class="container site-main">
+    <section class="panel">
+      <div class="panel-header">
+        <h2>操作</h2>
+        <p>
+          赤い点が現在地点です．赤い矢印は，その地点でその地点で最も急に高さが増える方向を表します．
+          <strong>少し進む</strong> を押すと，その向きへ一定距離だけ進みます．
+        </p>
+      </div>
+      <div class="panel-body">
+        <div class="controls climb-controls">
+          <!-- <div class="control-block control-wide">
+            <label>このデモで見たいこと</label>
+            <div class="small-note">
+              いま見えているのは「その場の傾き」だけですが，
+              その情報を一歩ずつ使い続けると，より高い場所へ向かっていけます．
+            </div>
+          </div> -->
+
+          <div class="control-block control-actions">
+            <label>操作ボタン</label>
+            <div class="button-row">
+              <button id="stepButton" class="button" type="button">少し進む</button>
+              <button id="resetButton" class="button button-subtle" type="button">やり直す</button>
+            </div>
+          </div>
+
+          <div class="control-block">
+            <label>状態</label>
+            <div id="statusBadge" class="status-badge">初期化中…</div>
+          </div>
+
+          <div class="control-block">
+            <label>ステップ数</label>
+            <div id="stepCountValue" class="status-badge">0</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel canvas-panel">
+      <div class="panel-header">
+        <h2>高さ場と現在地点</h2>
+        <p>
+          背景の色は高さを表し（青色：低い，黄色：高い），細い白線は等高線を表します．
+          現在位置と矢印だけを見ながら，少しずつ進んでいきます．
+        </p>
+      </div>
+      <div class="panel-body">
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot"></span> 現在地点</span>
+          <span class="legend-item"><span class="legend-arrow"></span> 進む向き</span>
+          <span class="legend-item"><span class="legend-line"></span> 等高線</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="mountainCanvas" aria-label="山登りデモの高さ場"></canvas>
+        </div>
+        <p class="small-note">
+          やり直すを押すと，初期位置がランダムに変わります．
+          条件がよければ，少し進むを繰り返すことで頂上付近まで到達できます．
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-actions">
+        <a class="button button-subtle" href="./index.html">第1回のページへ戻る</a>
+      </div>
+    </div>
+  </footer>
+
+
+  <script>
+    (() => {
+      const canvas = document.getElementById("mountainCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const stepButton = document.getElementById("stepButton");
+      const resetButton = document.getElementById("resetButton");
+      const statusBadge = document.getElementById("statusBadge");
+      const stepCountValue = document.getElementById("stepCountValue");
+
+      const world = {
+        xMin: -4.5,
+        xMax: 4.5,
+        yMin: -4.5,
+        yMax: 4.5
+      };
+
+      const state = {
+        point: [0, 0],
+        steps: 0,
+        stepSize: 0.26,
+        target: [0.2, -0.1],
+        summitRadius: 0.24,
+        zMin: 0,
+        zMax: 1,
+        contourLevels: [],
+        staticLayer: null,
+        field: null,
+        pending: false,
+        reached: false
+      };
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function mixChannel(a, b, t) {
+        return Math.round(lerp(a, b, t));
+      }
+
+      function height(x, y) {
+        const base = 1.25 * Math.exp(-(((x - 0.2) ** 2) / 7.5 + ((y + 0.1) ** 2) / 3.8));
+        const env1 = Math.exp(-(((x - 0.1) ** 2) / 9.0 + ((y + 0.2) ** 2) / 5.5));
+        const ripple1 = 0.13 * Math.sin(1.4 * x + 0.3) * Math.cos(1.8 * y - 0.4) * env1;
+        const env2 = Math.exp(-(((x + 0.6) ** 2) / 10.0 + ((y - 0.4) ** 2) / 7.0));
+        const ripple2 = 0.07 * Math.cos(2.1 * x - 0.2) * Math.sin(1.2 * y + 0.6) * env2;
+        const tilt = 0.015 * x - 0.01 * y;
+        return base + ripple1 + ripple2 + tilt;
+      }
+
+      function gradHeight(x, y) {
+        const eps = 1e-4;
+        const hx1 = height(x + eps, y);
+        const hx0 = height(x - eps, y);
+        const hy1 = height(x, y + eps);
+        const hy0 = height(x, y - eps);
+        return [(hx1 - hx0) / (2 * eps), (hy1 - hy0) / (2 * eps)];
+      }
+
+      function vecNorm(v) {
+        return Math.hypot(v[0], v[1]);
+      }
+
+      function distance(a, b) {
+        return Math.hypot(a[0] - b[0], a[1] - b[1]);
+      }
+
+      function isNearSummit(point) {
+        return distance(point, state.target) < state.summitRadius;
+      }
+
+      function clampPoint(point) {
+        return [
+          clamp(point[0], world.xMin + 0.05, world.xMax - 0.05),
+          clamp(point[1], world.yMin + 0.05, world.yMax - 0.05)
+        ];
+      }
+
+      function nextPoint(point) {
+        const g = gradHeight(point[0], point[1]);
+        const n = vecNorm(g);
+        if (n < 1e-10) {
+          return point.slice();
+        }
+        return clampPoint([
+          point[0] + state.stepSize * g[0] / n,
+          point[1] + state.stepSize * g[1] / n
+        ]);
+      }
+
+      function canReachSummit(start) {
+        let p = start.slice();
+        for (let i = 0; i < 80; i += 1) {
+          if (isNearSummit(p)) {
+            return true;
+          }
+          const g = gradHeight(p[0], p[1]);
+          const n = vecNorm(g);
+          if (n < 1e-10) {
+            return false;
+          }
+          const q = nextPoint(p);
+          if (distance(p, q) < 1e-8) {
+            return false;
+          }
+          p = q;
+        }
+        return isNearSummit(p);
+      }
+
+      function randomInRange(min, max) {
+        return min + Math.random() * (max - min);
+      }
+
+      function randomStart() {
+        for (let i = 0; i < 800; i += 1) {
+          const p = [
+            randomInRange(world.xMin + 0.4, world.xMax - 0.4),
+            randomInRange(world.yMin + 0.4, world.yMax - 0.4)
+          ];
+          if (distance(p, state.target) < 1.2) {
+            continue;
+          }
+          if (canReachSummit(p)) {
+            return p;
+          }
+        }
+        return [-3.2, -1.4];
+      }
+
+      function percentile(values, p) {
+        const sorted = values.slice().sort((a, b) => a - b);
+        const idx = (sorted.length - 1) * p;
+        const lo = Math.floor(idx);
+        const hi = Math.ceil(idx);
+        if (lo === hi) {
+          return sorted[lo];
+        }
+        const t = idx - lo;
+        return lerp(sorted[lo], sorted[hi], t);
+      }
+
+      function computeFieldData() {
+        const nx = 181;
+        const ny = 181;
+        const xs = new Array(nx);
+        const ys = new Array(ny);
+        const z = new Array(nx * ny);
+        const samples = [];
+
+        for (let ix = 0; ix < nx; ix += 1) {
+          xs[ix] = lerp(world.xMin, world.xMax, ix / (nx - 1));
+        }
+        for (let iy = 0; iy < ny; iy += 1) {
+          ys[iy] = lerp(world.yMin, world.yMax, iy / (ny - 1));
+        }
+        for (let iy = 0; iy < ny; iy += 1) {
+          for (let ix = 0; ix < nx; ix += 1) {
+            const value = height(xs[ix], ys[iy]);
+            z[iy * nx + ix] = value;
+            samples.push(value);
+          }
+        }
+
+        state.zMin = percentile(samples, 0.01);
+        state.zMax = percentile(samples, 0.99);
+        state.contourLevels = [];
+        for (let i = 1; i <= 10; i += 1) {
+          state.contourLevels.push(lerp(state.zMin, state.zMax, i / 11));
+        }
+        state.field = { nx, ny, xs, ys, z };
+      }
+
+      function viridisColor(t) {
+        const stops = [
+          { t: 0.00, c: [68, 1, 84] },
+          { t: 0.25, c: [59, 82, 139] },
+          { t: 0.50, c: [33, 145, 140] },
+          { t: 0.75, c: [94, 201, 98] },
+          { t: 1.00, c: [253, 231, 37] }
+        ];
+        const u = clamp(t, 0, 1);
+        for (let i = 0; i < stops.length - 1; i += 1) {
+          const a = stops[i];
+          const b = stops[i + 1];
+          if (u >= a.t && u <= b.t) {
+            const s = (u - a.t) / (b.t - a.t);
+            return [
+              mixChannel(a.c[0], b.c[0], s),
+              mixChannel(a.c[1], b.c[1], s),
+              mixChannel(a.c[2], b.c[2], s)
+            ];
+          }
+        }
+        return stops[stops.length - 1].c.slice();
+      }
+
+      function worldFromPixel(px, py, width, heightPx) {
+        const x = lerp(world.xMin, world.xMax, px / Math.max(width - 1, 1));
+        const y = lerp(world.yMax, world.yMin, py / Math.max(heightPx - 1, 1));
+        return [x, y];
+      }
+
+      function pixelFromWorld(x, y, width, heightPx) {
+        const px = (x - world.xMin) / (world.xMax - world.xMin) * width;
+        const py = (world.yMax - y) / (world.yMax - world.yMin) * heightPx;
+        return [px, py];
+      }
+
+      function resizeCanvas() {
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const rect = canvas.getBoundingClientRect();
+        const size = Math.max(320, Math.round(Math.min(rect.width, rect.height) * dpr));
+        const changed = canvas.width !== size || canvas.height !== size;
+        if (changed) {
+          canvas.width = size;
+          canvas.height = size;
+        }
+        return changed;
+      }
+
+      function edgeIntersection(level, p0, v0, p1, v1) {
+        if ((v0 < level && v1 > level) || (v0 > level && v1 < level)) {
+          const t = (level - v0) / (v1 - v0);
+          return {
+            x: lerp(p0.x, p1.x, t),
+            y: lerp(p0.y, p1.y, t)
+          };
+        }
+        return null;
+      }
+
+      function addTriangleContour(ctx2d, level, p0, v0, p1, v1, p2, v2, width, heightPx) {
+        const pts = [];
+        const e01 = edgeIntersection(level, p0, v0, p1, v1);
+        const e12 = edgeIntersection(level, p1, v1, p2, v2);
+        const e20 = edgeIntersection(level, p2, v2, p0, v0);
+        if (e01) pts.push(e01);
+        if (e12) pts.push(e12);
+        if (e20) pts.push(e20);
+        if (pts.length !== 2) {
+          return;
+        }
+        const a = pixelFromWorld(pts[0].x, pts[0].y, width, heightPx);
+        const b = pixelFromWorld(pts[1].x, pts[1].y, width, heightPx);
+        ctx2d.moveTo(a[0], a[1]);
+        ctx2d.lineTo(b[0], b[1]);
+      }
+
+      function drawContours(ctx2d, width, heightPx) {
+        const { nx, ny, xs, ys, z } = state.field;
+
+        function zAt(ix, iy) {
+          return z[iy * nx + ix];
+        }
+
+        const drawPass = (strokeStyle, lineWidth) => {
+          ctx2d.save();
+          ctx2d.beginPath();
+          ctx2d.strokeStyle = strokeStyle;
+          ctx2d.lineWidth = lineWidth;
+          ctx2d.lineCap = "round";
+          ctx2d.lineJoin = "round";
+
+          for (let li = 0; li < state.contourLevels.length; li += 1) {
+            const level = state.contourLevels[li];
+            for (let iy = 0; iy < ny - 1; iy += 1) {
+              const y0 = ys[iy];
+              const y1 = ys[iy + 1];
+              for (let ix = 0; ix < nx - 1; ix += 1) {
+                const x0 = xs[ix];
+                const x1 = xs[ix + 1];
+
+                const bl = { x: x0, y: y0 };
+                const br = { x: x1, y: y0 };
+                const tr = { x: x1, y: y1 };
+                const tl = { x: x0, y: y1 };
+
+                const zbl = zAt(ix, iy);
+                const zbr = zAt(ix + 1, iy);
+                const ztr = zAt(ix + 1, iy + 1);
+                const ztl = zAt(ix, iy + 1);
+
+                addTriangleContour(ctx2d, level, bl, zbl, br, zbr, tr, ztr, width, heightPx);
+                addTriangleContour(ctx2d, level, bl, zbl, tr, ztr, tl, ztl, width, heightPx);
+              }
+            }
+          }
+
+          ctx2d.stroke();
+          ctx2d.restore();
+        };
+
+        drawPass(getComputedStyle(document.documentElement).getPropertyValue("--contour-shadow").trim() || "rgba(0,0,0,0.18)", 3.2);
+        drawPass(getComputedStyle(document.documentElement).getPropertyValue("--contour").trim() || "rgba(255,255,255,0.98)", 1.6);
+      }
+
+      function buildStaticLayer() {
+        const width = canvas.width;
+        const heightPx = canvas.height;
+        const off = document.createElement("canvas");
+        off.width = width;
+        off.height = heightPx;
+        const offCtx = off.getContext("2d");
+
+        const image = offCtx.createImageData(width, heightPx);
+        const data = image.data;
+        const zSpan = Math.max(state.zMax - state.zMin, 1e-8);
+
+        for (let py = 0; py < heightPx; py += 1) {
+          for (let px = 0; px < width; px += 1) {
+            const [x, y] = worldFromPixel(px, py, width, heightPx);
+            const zValue = height(x, y);
+            const t = (zValue - state.zMin) / zSpan;
+            const rgb = viridisColor(t);
+            const idx = (py * width + px) * 4;
+            data[idx + 0] = rgb[0];
+            data[idx + 1] = rgb[1];
+            data[idx + 2] = rgb[2];
+            data[idx + 3] = 255;
+          }
+        }
+
+        offCtx.putImageData(image, 0, 0);
+        drawContours(offCtx, width, heightPx);
+        state.staticLayer = off;
+      }
+
+      function updateStatus() {
+        const point = state.point;
+        const g = gradHeight(point[0], point[1]);
+        const n = vecNorm(g);
+
+        if (state.reached) {
+          statusBadge.textContent = "頂上付近に到達";
+          statusBadge.classList.add("is-summit");
+        } else if (n < 1e-8) {
+          statusBadge.textContent = "平らな地点";
+          statusBadge.classList.remove("is-summit");
+        } else {
+          statusBadge.textContent = "上り坂";
+          statusBadge.classList.remove("is-summit");
+        }
+
+        stepButton.disabled = state.reached || n < 1e-10;
+      }
+
+      function updateInfo() {
+        stepCountValue.textContent = String(state.steps);
+        updateStatus();
+      }
+
+      function drawPoint(point) {
+        const [px, py] = pixelFromWorld(point[0], point[1], canvas.width, canvas.height);
+        ctx.save();
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--current-soft").trim() || "#f6dddd";
+        ctx.beginPath();
+        ctx.arc(px, py, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(px, py, 8.5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--current").trim() || "#c83d3d";
+        ctx.beginPath();
+        ctx.arc(px, py, 6.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawArrow(point) {
+        const g = gradHeight(point[0], point[1]);
+        const n = vecNorm(g);
+        if (n < 1e-10) {
+          return;
+        }
+
+        const dir = [g[0] / n, g[1] / n];
+        const arrowLen = 0.72;
+        const q = [point[0] + arrowLen * dir[0], point[1] + arrowLen * dir[1]];
+
+        const p0 = pixelFromWorld(point[0], point[1], canvas.width, canvas.height);
+        const p1 = pixelFromWorld(q[0], q[1], canvas.width, canvas.height);
+
+        const dx = p1[0] - p0[0];
+        const dy = p1[1] - p0[1];
+        const len = Math.hypot(dx, dy);
+        if (len < 1e-6) {
+          return;
+        }
+
+        const ux = dx / len;
+        const uy = dy / len;
+        const head = Math.min(18, len * 0.35);
+
+        function arrowPath(lineWidth, color) {
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.lineWidth = lineWidth;
+
+          ctx.beginPath();
+          ctx.moveTo(p0[0], p0[1]);
+          ctx.lineTo(p1[0] - ux * head, p1[1] - uy * head);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(p1[0], p1[1]);
+          ctx.lineTo(p1[0] - ux * head - uy * head * 0.55, p1[1] - uy * head + ux * head * 0.55);
+          ctx.lineTo(p1[0] - ux * head + uy * head * 0.55, p1[1] - uy * head - ux * head * 0.55);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+
+        arrowPath(8, getComputedStyle(document.documentElement).getPropertyValue("--arrow-outline").trim() || "#ffffff");
+        arrowPath(4.2, getComputedStyle(document.documentElement).getPropertyValue("--arrow").trim() || "#c83d3d");
+      }
+
+      function drawAll() {
+        const resized = resizeCanvas();
+        if (resized || !state.staticLayer) {
+          buildStaticLayer();
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(state.staticLayer, 0, 0);
+        drawArrow(state.point);
+        drawPoint(state.point);
+        updateInfo();
+      }
+
+      function scheduleDraw() {
+        if (state.pending) {
+          return;
+        }
+        state.pending = true;
+        window.requestAnimationFrame(() => {
+          state.pending = false;
+          drawAll();
+        });
+      }
+
+      function resetState() {
+        state.point = randomStart();
+        state.steps = 0;
+        state.reached = false;
+        scheduleDraw();
+      }
+
+      stepButton.addEventListener("click", () => {
+        if (state.reached) {
+          return;
+        }
+        state.point = nextPoint(state.point);
+        state.steps += 1;
+        if (isNearSummit(state.point)) {
+          state.reached = true;
+        }
+        scheduleDraw();
+      });
+
+      resetButton.addEventListener("click", resetState);
+      window.addEventListener("resize", scheduleDraw);
+
+      computeFieldData();
+      resetState();
+    })();
+  </script>
+
+</body>
+</html>
