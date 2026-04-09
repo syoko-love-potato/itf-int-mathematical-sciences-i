@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>テイラー展開を観察する — sin x の局所近似</title>
+  <style>
+    :root {
+      --bg: #f3f3f3;
+      --panel: #ffffff;
+      --text: #111111;
+      --muted: #555555;
+      --border: #cfcfcf;
+      --grid: #ededed;
+      --axis: #9a9a9a;
+      --sin: #111111;
+      --taylor: #2f67d8;
+      --center: #c63f3f;
+      --error: #a35a16;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .app {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 20px 34px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.7rem, 3vw, 2.5rem);
+      line-height: 1.18;
+      letter-spacing: 0.01em;
+    }
+
+    .lead {
+      margin: 0 0 18px;
+      max-width: 1040px;
+      line-height: 1.8;
+      color: #222222;
+      font-size: 1rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.4fr) minmax(240px, 1fr) auto;
+      gap: 14px;
+      align-items: end;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px 18px;
+    }
+
+    .control-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .control-block label {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #444444;
+      cursor: pointer;
+    }
+
+    .small-note {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .status-badge,
+    button {
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      padding: 11px 15px;
+      font: inherit;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 190px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      text-align: center;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover {
+      background: #f6f6f6;
+    }
+
+    .formula-panel {
+      margin-top: 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+
+    .formula-title {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .formula-main,
+    .formula-detail {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      line-height: 1.7;
+      word-break: break-word;
+    }
+
+    .formula-main {
+      font-size: 0.98rem;
+      font-weight: 700;
+    }
+
+    .formula-detail {
+      margin-top: 6px;
+      font-size: 0.91rem;
+      color: #333333;
+    }
+
+    .info-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .info-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 12px 14px;
+      min-height: 84px;
+    }
+
+    .info-card .label {
+      font-size: 0.84rem;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      display: inline-block;
+      flex: 0 0 auto;
+    }
+
+    .dot.sin { background: var(--sin); }
+    .dot.taylor { background: var(--taylor); }
+    .dot.center { background: var(--center); }
+    .dot.error { background: var(--error); }
+
+    .info-card .value {
+      margin-top: 8px;
+      font-size: 1.04rem;
+      font-weight: 800;
+      line-height: 1.35;
+      font-variant-numeric: tabular-nums;
+      word-break: break-word;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .panel.span-2 {
+      grid-column: 1 / -1;
+    }
+
+    .panel-header {
+      padding: 16px 18px 10px;
+    }
+
+    .panel-header h2 {
+      margin: 0 0 8px;
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
+
+    .panel-header p {
+      margin: 0;
+      line-height: 1.7;
+      color: #333333;
+      font-size: 0.95rem;
+    }
+
+    .canvas-wrap {
+      padding: 14px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(52vw, 430px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #ffffff;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      line-height: 1.8;
+      color: #2f2f2f;
+      font-size: 0.97rem;
+    }
+
+    code {
+      background: #f1f1f1;
+      border: 1px solid #dedede;
+      border-radius: 7px;
+      padding: 0.16em 0.38em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    @media (max-width: 1100px) {
+      .info-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 980px) {
+      .controls {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .controls > :first-child {
+        grid-column: 1 / -1;
+      }
+
+      .panels {
+        grid-template-columns: 1fr;
+      }
+
+      .panel.span-2 {
+        grid-column: auto;
+      }
+
+      canvas {
+        height: 390px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        padding: 20px 14px 26px;
+      }
+
+      .controls,
+      .info-strip {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>テイラー展開を観察する</h1>
+
+    <p class="lead">
+      <code>f(x)=sin x</code> を，<code>x=a</code> の近くでテイラー展開して得られる多項式 <code>T_n(x)</code> を重ねて表示します．
+      スライダで<strong>展開中心 <code>a</code></strong> と<strong>次数 <code>n</code></strong> を変えると，
+      「近くではよく合うが，離れるとずれやすい」という局所近似の特徴や，
+      次数を上げるほど近似精度が高まる様子を観察できます．
+      特に <code>a=0</code> のときは，マクローリン展開になっています．
+    </p>
+
+    <section class="controls" aria-label="操作パネル">
+      <div class="control-block">
+        <label for="centerSlider">展開中心 a</label>
+        <input id="centerSlider" type="range" min="-628" max="628" value="0" step="1" />
+        <span class="small-note">範囲は <code>-2π</code> から <code>2π</code> です．黒が <code>sin x</code>，青がテイラー多項式です．赤い縦線が現在の展開中心 <code>x=a</code> を表します．</span>
+      </div>
+
+      <div class="control-block">
+        <label for="degreeSlider">次数 n</label>
+        <input id="degreeSlider" type="range" min="0" max="12" value="1" step="1" />
+        <span class="small-note">次数を上げると，使う導関数の情報が増え，<code>x=a</code> の近くでより精密に近似できます．</span>
+      </div>
+
+      <div class="control-block">
+        <label for="resetButton">状態</label>
+        <button id="resetButton" type="button">初期状態に戻す</button>
+      </div>
+    </section>
+
+    <section class="formula-panel" aria-label="現在の展開式">
+      <div class="formula-title">現在の近似の見方</div>
+      <div class="formula-main" id="formulaMain">T_n(x) = \sum_{k=0}^{n} f^{(k)}(a) / k! · (x-a)^k</div>
+      <div class="formula-detail" id="formulaDetail">ここに現在の係数表示が入ります．</div>
+    </section>
+
+    <section class="info-strip" aria-label="現在の状態">
+      <div class="info-card">
+        <div class="label"><span class="dot center"></span>展開中心</div>
+        <div class="value" id="aLabel">a = 0.000000</div>
+      </div>
+      <div class="info-card">
+        <div class="label"><span class="dot center"></span>π との比</div>
+        <div class="value" id="aPiLabel">a / π = 0.000000</div>
+      </div>
+      <div class="info-card">
+        <div class="label"><span class="dot taylor"></span>現在の次数</div>
+        <div class="value" id="degreeLabel">n = 1</div>
+      </div>
+      <div class="info-card">
+        <div class="label"><span class="dot sin"></span>中心での値</div>
+        <div class="value" id="valueLabel">sin(a) = 0.000000</div>
+      </div>
+      <div class="info-card">
+        <div class="label"><span class="dot error"></span>拡大図での最大誤差</div>
+        <div class="value" id="errorLabel">max |sin x - T_n(x)| = 0.000000</div>
+      </div>
+    </section>
+
+    <section class="panels">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>全体のグラフ</h2>
+          <p>
+            黒線が <code>sin x</code>，青線が <code>x=a</code> のまわりでのテイラー多項式 <code>T_n(x)</code> です．
+            局所近似は展開中心の近くではよく合いますが，遠くまで行くと一致しないことがあります．
+          </p>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="globalCanvas" aria-label="全体のグラフ"></canvas>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2><code>x=a</code> 付近の拡大図</h2>
+          <p>
+            拡大図では，展開中心の近くで黒線と青線がどれほど重なるかを詳しく観察できます．
+            次数を上げると，一致する範囲が広がる様子が見えてきます．
+          </p>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="zoomCanvas" aria-label="x=a付近の拡大図"></canvas>
+        </div>
+      </article>
+
+      <article class="panel span-2">
+        <div class="panel-header">
+          <h2>拡大区間での誤差</h2>
+          <p>
+            下のグラフは，拡大図と同じ区間での誤差 <code>|sin x - T_n(x)|</code> です．
+            近似がよくなるほど，誤差の曲線は下へ押し下げられます．
+          </p>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="errorCanvas" aria-label="誤差のグラフ"></canvas>
+        </div>
+      </article>
+    </section>
+
+    <p class="footer-note">
+      テイラー展開は，関数の値だけでなく，その点での傾きや曲がり方などの導関数の情報を集めて，
+      関数を局所的に多項式で置き換える方法です．<code>a=0</code> の場合はマクローリン展開です．
+      離れた場所まで必ずよく合うわけではありませんが，近くで複雑な関数を扱いやすい式に置き換えられることが大きな魅力です．
+    </p>
+  </main>
+
+  <script>
+    (() => {
+      const globalCanvas = document.getElementById("globalCanvas");
+      const zoomCanvas = document.getElementById("zoomCanvas");
+      const errorCanvas = document.getElementById("errorCanvas");
+      const centerSlider = document.getElementById("centerSlider");
+      const degreeSlider = document.getElementById("degreeSlider");
+      const resetButton = document.getElementById("resetButton");
+
+      const aLabel = document.getElementById("aLabel");
+      const aPiLabel = document.getElementById("aPiLabel");
+      const degreeLabel = document.getElementById("degreeLabel");
+      const valueLabel = document.getElementById("valueLabel");
+      const errorLabel = document.getElementById("errorLabel");
+      const formulaMain = document.getElementById("formulaMain");
+      const formulaDetail = document.getElementById("formulaDetail");
+
+      const PI = Math.PI;
+      const GLOBAL_X_MIN = -2 * PI;
+      const GLOBAL_X_MAX = 2 * PI;
+      const ZOOM_HALF_WIDTH = 1.2;
+
+      const state = {
+        centerRaw: Number(centerSlider.value),
+        degree: Number(degreeSlider.value),
+        pending: false,
+      };
+
+      function getA() {
+        return state.centerRaw / 100;
+      }
+
+      function formatNumber(x) {
+        const ax = Math.abs(x);
+        if (ax !== 0 && (ax < 1e-4 || ax >= 1e5)) {
+          return x.toExponential(3);
+        }
+        return x.toFixed(6);
+      }
+
+      function resizeCanvas(canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(1, Math.round(rect.width));
+        const height = Math.max(1, Math.round(rect.height));
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        return { ctx, width, height };
+      }
+
+      function clearCanvas(ctx, width, height) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function worldToScreen(x, y, world, width, height) {
+        const sx = ((x - world.xMin) / (world.xMax - world.xMin)) * width;
+        const sy = ((world.yMax - y) / (world.yMax - world.yMin)) * height;
+        return { sx, sy };
+      }
+
+      function niceStep(target) {
+        const exponent = Math.floor(Math.log10(target));
+        const base = 10 ** exponent;
+        const scaled = target / base;
+        if (scaled <= 1) return 1 * base;
+        if (scaled <= 2) return 2 * base;
+        if (scaled <= 5) return 5 * base;
+        return 10 * base;
+      }
+
+      function drawGrid(ctx, width, height, world) {
+        const xStep = niceStep((world.xMax - world.xMin) / 8);
+        const yStep = niceStep((world.yMax - world.yMin) / 8);
+
+        ctx.save();
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--grid").trim();
+        ctx.lineWidth = 1;
+
+        const xStart = Math.ceil(world.xMin / xStep);
+        const xEnd = Math.floor(world.xMax / xStep);
+        for (let k = xStart; k <= xEnd; k += 1) {
+          const x = k * xStep;
+          const { sx } = worldToScreen(x, 0, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(sx, 0);
+          ctx.lineTo(sx, height);
+          ctx.stroke();
+        }
+
+        const yStart = Math.ceil(world.yMin / yStep);
+        const yEnd = Math.floor(world.yMax / yStep);
+        for (let k = yStart; k <= yEnd; k += 1) {
+          const y = k * yStep;
+          const { sy } = worldToScreen(0, y, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(0, sy);
+          ctx.lineTo(width, sy);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function drawArrowLine(ctx, x1, y1, x2, y2) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const size = 9;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - size * Math.cos(angle - Math.PI / 7), y2 - size * Math.sin(angle - Math.PI / 7));
+        ctx.lineTo(x2 - size * Math.cos(angle + Math.PI / 7), y2 - size * Math.sin(angle + Math.PI / 7));
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawAxes(ctx, width, height, world) {
+        ctx.save();
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--axis").trim();
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--axis").trim();
+        ctx.lineWidth = 1.6;
+
+        if (world.yMin < 0 && world.yMax > 0) {
+          const { sy } = worldToScreen(0, 0, world, width, height);
+          drawArrowLine(ctx, 0, sy, width - 10, sy);
+        }
+
+        if (world.xMin < 0 && world.xMax > 0) {
+          const { sx } = worldToScreen(0, 0, world, width, height);
+          drawArrowLine(ctx, sx, height, sx, 10);
+        }
+
+        ctx.restore();
+      }
+
+      function derivativeAt(order, a) {
+        const m = ((order % 4) + 4) % 4;
+        if (m === 0) return Math.sin(a);
+        if (m === 1) return Math.cos(a);
+        if (m === 2) return -Math.sin(a);
+        return -Math.cos(a);
+      }
+
+      function coefficients(a, degree) {
+        const coeffs = [];
+        let factorial = 1;
+        for (let k = 0; k <= degree; k += 1) {
+          if (k > 0) factorial *= k;
+          coeffs.push(derivativeAt(k, a) / factorial);
+        }
+        return coeffs;
+      }
+
+      function evalTaylor(x, a, coeffs) {
+        const dx = x - a;
+        let sum = 0;
+        let power = 1;
+        for (let k = 0; k < coeffs.length; k += 1) {
+          sum += coeffs[k] * power;
+          power *= dx;
+        }
+        return sum;
+      }
+
+      function makeMainWorld(width, height) {
+        const xMin = GLOBAL_X_MIN;
+        const xMax = GLOBAL_X_MAX;
+        const xSpan = xMax - xMin;
+        const ySpan = xSpan * (height / width);
+        const halfY = Math.max(1.45, ySpan / 2);
+        return {
+          xMin,
+          xMax,
+          yMin: -halfY,
+          yMax: halfY,
+        };
+      }
+
+      function makeZoomWorld(width, height, a, coeffs) {
+        const xMin = a - ZOOM_HALF_WIDTH;
+        const xMax = a + ZOOM_HALF_WIDTH;
+        const samples = 600;
+        let yMin = Infinity;
+        let yMax = -Infinity;
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const x = xMin + (xMax - xMin) * t;
+          const ys = Math.sin(x);
+          const yt = evalTaylor(x, a, coeffs);
+          yMin = Math.min(yMin, ys, yt);
+          yMax = Math.max(yMax, ys, yt);
+        }
+        const pad = Math.max(0.12, 0.14 * (yMax - yMin || 1));
+        yMin -= pad;
+        yMax += pad;
+
+        const xSpan = xMax - xMin;
+        const desiredY = xSpan * (height / width);
+        const currentY = yMax - yMin;
+        if (currentY < desiredY) {
+          const extra = (desiredY - currentY) / 2;
+          yMin -= extra;
+          yMax += extra;
+        }
+        return { xMin, xMax, yMin, yMax };
+      }
+
+      function makeErrorWorld(width, height, a, coeffs) {
+        const xMin = a - ZOOM_HALF_WIDTH;
+        const xMax = a + ZOOM_HALF_WIDTH;
+        const samples = 700;
+        let maxErr = 0;
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const x = xMin + (xMax - xMin) * t;
+          const err = Math.abs(Math.sin(x) - evalTaylor(x, a, coeffs));
+          maxErr = Math.max(maxErr, err);
+        }
+        const yMax = Math.max(maxErr * 1.12, 1e-6);
+        const yMin = 0;
+        const xSpan = xMax - xMin;
+        const desiredY = xSpan * (height / width);
+        return { xMin, xMax, yMin, yMax: Math.max(yMax, desiredY * 0.25) };
+      }
+
+      function drawFunction(ctx, width, height, world, fn, color, lineWidth = 2.4) {
+        const samples = Math.max(1200, Math.round(width * 3));
+        const path = new Path2D();
+        let started = false;
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const x = world.xMin + (world.xMax - world.xMin) * t;
+          const y = fn(x);
+          if (!Number.isFinite(y)) continue;
+          const { sx, sy } = worldToScreen(x, y, world, width, height);
+          if (!started) {
+            path.moveTo(sx, sy);
+            started = true;
+          } else {
+            path.lineTo(sx, sy);
+          }
+        }
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke(path);
+        ctx.restore();
+      }
+
+      function drawVerticalMarker(ctx, width, height, world, a) {
+        const { sx } = worldToScreen(a, 0, world, width, height);
+        ctx.save();
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--center").trim();
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([7, 6]);
+        ctx.beginPath();
+        ctx.moveTo(sx, 0);
+        ctx.lineTo(sx, height);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawPoint(ctx, width, height, world, x, y, fillColor) {
+        const { sx, sy } = worldToScreen(x, y, world, width, height);
+        ctx.save();
+        ctx.fillStyle = fillColor;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 5.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function maxErrorInZoom(a, coeffs) {
+        const xMin = a - ZOOM_HALF_WIDTH;
+        const xMax = a + ZOOM_HALF_WIDTH;
+        const samples = 1000;
+        let maxErr = 0;
+        for (let i = 0; i <= samples; i += 1) {
+          const x = xMin + (xMax - xMin) * (i / samples);
+          const err = Math.abs(Math.sin(x) - evalTaylor(x, a, coeffs));
+          maxErr = Math.max(maxErr, err);
+        }
+        return maxErr;
+      }
+
+      function formatPiMultiple(a) {
+        return (a / PI).toFixed(6);
+      }
+
+      function compactCoefficientList(a, coeffs) {
+        const terms = [];
+        for (let k = 0; k < coeffs.length; k += 1) {
+          const c = coeffs[k];
+          if (Math.abs(c) < 1e-10) continue;
+          const abs = Math.abs(c);
+          const signed = c >= 0 ? "+" : "−";
+          const num = abs < 1e-4 || abs >= 1e4 ? abs.toExponential(2) : abs.toFixed(6);
+          let term = num;
+          if (k >= 1) term += `·(x-a)`;
+          if (k >= 2) term += `^${k}`;
+          terms.push({ sign: signed, text: term });
+        }
+        if (terms.length === 0) return "T_n(x) = 0";
+        let text = `T_${coeffs.length - 1}(x) = `;
+        terms.forEach((term, index) => {
+          if (index === 0) {
+            text += (term.sign === "−" ? "−" : "") + term.text;
+          } else {
+            text += ` ${term.sign} ${term.text}`;
+          }
+        });
+        return text;
+      }
+
+      function updateReadout(a, coeffs) {
+        const degree = coeffs.length - 1;
+        const maxErr = maxErrorInZoom(a, coeffs);
+        aLabel.textContent = `a = ${formatNumber(a)}`;
+        aPiLabel.textContent = `a / π = ${formatPiMultiple(a)}`;
+        degreeLabel.textContent = `n = ${degree}`;
+        valueLabel.textContent = `sin(a) = ${formatNumber(Math.sin(a))}`;
+        errorLabel.textContent = `max |sin x - T_n(x)| = ${formatNumber(maxErr)}`;
+        formulaMain.textContent = `T_${degree}(x) = Σ[k=0..${degree}] f^(k)(a) / k! · (x-a)^k`;
+
+        const special = Math.abs(a) < 0.005
+          ? "a が 0 に近いので，ほぼマクローリン展開として見られます．"
+          : "a を動かすと，展開中心に応じて係数が変わります．";
+        formulaDetail.textContent = compactCoefficientList(a, coeffs) + "　|　" + special;
+      }
+
+      function drawMainPanel(canvas, world, a, coeffs, showTaylor = true) {
+        const { ctx, width, height } = resizeCanvas(canvas);
+        clearCanvas(ctx, width, height);
+        drawGrid(ctx, width, height, world);
+        drawAxes(ctx, width, height, world);
+        drawFunction(ctx, width, height, world, Math.sin, getComputedStyle(document.documentElement).getPropertyValue("--sin").trim(), 2.5);
+        if (showTaylor) {
+          drawFunction(ctx, width, height, world, (x) => evalTaylor(x, a, coeffs), getComputedStyle(document.documentElement).getPropertyValue("--taylor").trim(), 2.5);
+        }
+        drawVerticalMarker(ctx, width, height, world, a);
+        drawPoint(ctx, width, height, world, a, Math.sin(a), getComputedStyle(document.documentElement).getPropertyValue("--center").trim());
+      }
+
+      function drawErrorPanel(canvas, world, a, coeffs) {
+        const { ctx, width, height } = resizeCanvas(canvas);
+        clearCanvas(ctx, width, height);
+        drawGrid(ctx, width, height, world);
+        drawAxes(ctx, width, height, world);
+        drawFunction(
+          ctx,
+          width,
+          height,
+          world,
+          (x) => Math.abs(Math.sin(x) - evalTaylor(x, a, coeffs)),
+          getComputedStyle(document.documentElement).getPropertyValue("--error").trim(),
+          2.5
+        );
+        drawVerticalMarker(ctx, width, height, world, a);
+        drawPoint(ctx, width, height, world, a, 0, getComputedStyle(document.documentElement).getPropertyValue("--center").trim());
+      }
+
+      function drawAll() {
+        const a = getA();
+        const coeffs = coefficients(a, state.degree);
+        updateReadout(a, coeffs);
+
+        const globalSize = resizeCanvas(globalCanvas);
+        const globalWorld = makeMainWorld(globalSize.width, globalSize.height);
+        clearCanvas(globalSize.ctx, globalSize.width, globalSize.height);
+        drawGrid(globalSize.ctx, globalSize.width, globalSize.height, globalWorld);
+        drawAxes(globalSize.ctx, globalSize.width, globalSize.height, globalWorld);
+        drawFunction(globalSize.ctx, globalSize.width, globalSize.height, globalWorld, Math.sin, getComputedStyle(document.documentElement).getPropertyValue("--sin").trim(), 2.5);
+        drawFunction(globalSize.ctx, globalSize.width, globalSize.height, globalWorld, (x) => evalTaylor(x, a, coeffs), getComputedStyle(document.documentElement).getPropertyValue("--taylor").trim(), 2.5);
+        drawVerticalMarker(globalSize.ctx, globalSize.width, globalSize.height, globalWorld, a);
+        drawPoint(globalSize.ctx, globalSize.width, globalSize.height, globalWorld, a, Math.sin(a), getComputedStyle(document.documentElement).getPropertyValue("--center").trim());
+
+        const zoomSize = resizeCanvas(zoomCanvas);
+        const zoomWorld = makeZoomWorld(zoomSize.width, zoomSize.height, a, coeffs);
+        clearCanvas(zoomSize.ctx, zoomSize.width, zoomSize.height);
+        drawGrid(zoomSize.ctx, zoomSize.width, zoomSize.height, zoomWorld);
+        drawAxes(zoomSize.ctx, zoomSize.width, zoomSize.height, zoomWorld);
+        drawFunction(zoomSize.ctx, zoomSize.width, zoomSize.height, zoomWorld, Math.sin, getComputedStyle(document.documentElement).getPropertyValue("--sin").trim(), 2.5);
+        drawFunction(zoomSize.ctx, zoomSize.width, zoomSize.height, zoomWorld, (x) => evalTaylor(x, a, coeffs), getComputedStyle(document.documentElement).getPropertyValue("--taylor").trim(), 2.5);
+        drawVerticalMarker(zoomSize.ctx, zoomSize.width, zoomSize.height, zoomWorld, a);
+        drawPoint(zoomSize.ctx, zoomSize.width, zoomSize.height, zoomWorld, a, Math.sin(a), getComputedStyle(document.documentElement).getPropertyValue("--center").trim());
+
+        const errorSize = resizeCanvas(errorCanvas);
+        const errorWorld = makeErrorWorld(errorSize.width, errorSize.height, a, coeffs);
+        clearCanvas(errorSize.ctx, errorSize.width, errorSize.height);
+        drawGrid(errorSize.ctx, errorSize.width, errorSize.height, errorWorld);
+        drawAxes(errorSize.ctx, errorSize.width, errorSize.height, errorWorld);
+        drawFunction(errorSize.ctx, errorSize.width, errorSize.height, errorWorld, (x) => Math.abs(Math.sin(x) - evalTaylor(x, a, coeffs)), getComputedStyle(document.documentElement).getPropertyValue("--error").trim(), 2.5);
+        drawVerticalMarker(errorSize.ctx, errorSize.width, errorSize.height, errorWorld, a);
+        drawPoint(errorSize.ctx, errorSize.width, errorSize.height, errorWorld, a, 0, getComputedStyle(document.documentElement).getPropertyValue("--center").trim());
+      }
+
+      function scheduleDraw() {
+        if (state.pending) return;
+        state.pending = true;
+        window.requestAnimationFrame(() => {
+          state.pending = false;
+          drawAll();
+        });
+      }
+
+      centerSlider.addEventListener("input", () => {
+        state.centerRaw = Number(centerSlider.value);
+        scheduleDraw();
+      });
+
+      degreeSlider.addEventListener("input", () => {
+        state.degree = Number(degreeSlider.value);
+        scheduleDraw();
+      });
+
+      resetButton.addEventListener("click", () => {
+        state.centerRaw = 0;
+        state.degree = 1;
+        centerSlider.value = "0";
+        degreeSlider.value = "1";
+        scheduleDraw();
+      });
+
+      window.addEventListener("resize", scheduleDraw);
+      window.addEventListener("load", scheduleDraw);
+    })();
+  </script>
+</body>
+</html>
