@@ -1,0 +1,156 @@
+.toolbar-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.toolbar-group {
+  display: grid;
+  gap: 8px;
+}
+
+.toolbar-group-inline {
+  align-items: start;
+}
+
+.toolbar-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #333333;
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mode-button.is-active {
+  background: var(--accent);
+  color: var(--button-text);
+  border-color: var(--accent);
+}
+
+.mode-button.is-active:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.checkbox-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.checkbox-chip input {
+  margin: 0;
+}
+
+.sim-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(260px, 0.9fr);
+  gap: 18px;
+  margin-top: 18px;
+  align-items: start;
+}
+
+.sim-stage {
+  min-width: 0;
+}
+
+.sim-surface {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.sim-surface canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+#glCanvas {
+  background: #ffffff;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+#overlayCanvas {
+  pointer-events: none;
+}
+
+.unsupported-message {
+  position: absolute;
+  inset: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  border: 1px dashed #c8c8c8;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  text-align: center;
+  line-height: 1.75;
+}
+
+.sim-info-strip {
+  margin-top: 0;
+}
+
+.info-card-wide {
+  min-height: 124px;
+}
+
+.value-multi {
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.65;
+}
+
+.note-space {
+  margin-top: 16px;
+}
+
+@media (max-width: 980px) {
+  .sim-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sim-info-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .segmented {
+    flex-direction: column;
+  }
+
+  .segmented .button {
+    width: 100%;
+  }
+
+  .checkbox-chip {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .sim-info-strip {
+    grid-template-columns: 1fr;
+  }
+}

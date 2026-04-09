@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>局所的な法則から全体を記述する — 2 次元流体デモ</title>
+  <link rel="stylesheet" href="../../assets/css/course.css" />
+  <link rel="stylesheet" href="./fluid.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <p class="site-eyebrow">数理科学 I / 第 3 回</p>
+      <h1 class="site-title">局所的な法則から全体を記述する — 2 次元流体デモ</h1>
+      <p class="site-lead">
+        各格子点での局所的な更新を，全体に同じ形で繰り返すと，流れ全体のふるまいが現れます．
+        このデモでは，染料の模様だけでなく，速度場・発散・圧力の表示を切り替えて，
+        「近くの値との差を使った更新」が全体の運動につながる様子を観察できます．
+      </p>
+    </div>
+  </header>
+
+  <main class="container site-main">
+    <section class="panel">
+      <div class="panel-header">
+        <h2>見どころ</h2>
+        <p>
+          このデモは流体力学を詳しく学ぶためのものではなく，
+          「偏微分で書かれた局所的な法則が，全体のふるまいを決める」ことを直感的に見るためのものです．
+        </p>
+      </div>
+      <div class="panel-body">
+        <div class="card-grid">
+          <article class="lesson-card">
+            <div class="lesson-meta">1. 速度場</div>
+            <h3 class="lesson-title">各点に小さなベクトルがある</h3>
+            <p class="lesson-text">
+              まず，各格子点には「その場所でどちら向きに，どれくらい流れているか」という局所情報が入っています．
+              これが速度場です．
+            </p>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-meta">2. 発散</div>
+            <h3 class="lesson-title">周囲との差をとる</h3>
+            <p class="lesson-text">
+              近くの格子点との違いを比べると，その点で流れが湧き出しているか，吸い込まれているかを調べられます．
+              これは差分で書かれる局所計算です．
+            </p>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-meta">3. 圧力補正</div>
+            <h3 class="lesson-title">局所的に直すと，全体が整う</h3>
+            <p class="lesson-text">
+              発散が大きい場所を，近傍の情報から少しずつ補正すると，
+              全体として滑らかな流れへ近づいていきます．
+            </p>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-meta">4. 染料表示</div>
+            <h3 class="lesson-title">全体の模様として見える</h3>
+            <p class="lesson-text">
+              局所的な更新を続けた結果が，目に見える大域的な模様として現れます．
+              これが「局所的な法則から全体を記述する」という見方です．
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>デモ</h2>
+        <p>
+          キャンバス上をドラッグすると，その場所に速度と染料が加わります．
+          表示モードを切り替えながら，何が内部で計算されているかを見てください．
+        </p>
+      </div>
+      <div class="panel-body">
+        <div class="toolbar-grid">
+          <div class="toolbar-group">
+            <span class="toolbar-label">表示</span>
+            <div class="segmented" role="group" aria-label="表示モード">
+              <button class="button button-subtle mode-button is-active" type="button" data-mode="dye">染料</button>
+              <button class="button button-subtle mode-button" type="button" data-mode="velocity">速度</button>
+              <button class="button button-subtle mode-button" type="button" data-mode="divergence">発散</button>
+              <button class="button button-subtle mode-button" type="button" data-mode="pressure">圧力</button>
+            </div>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="toolbar-label">操作</span>
+            <div class="segmented" role="group" aria-label="操作">
+              <button class="button" type="button" id="toggleRunButton">一時停止</button>
+              <button class="button button-subtle" type="button" id="stepButton">1 ステップ進める</button>
+              <button class="button button-subtle" type="button" id="resetButton">初期状態に戻す</button>
+            </div>
+          </div>
+
+          <div class="toolbar-group toolbar-group-inline">
+            <label class="checkbox-chip">
+              <input type="checkbox" id="showArrowsCheckbox" checked />
+              <span>他の表示にも速度矢印を重ねる</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="sim-layout">
+          <div class="sim-stage">
+            <div class="sim-surface" id="simSurface">
+              <canvas id="glCanvas" aria-label="2 次元流体シミュレーション"></canvas>
+              <canvas id="overlayCanvas" aria-hidden="true"></canvas>
+              <div class="unsupported-message" id="unsupportedMessage" hidden>
+                このブラウザでは必要な WebGL 機能が利用できないため，デモを開始できませんでした．
+              </div>
+            </div>
+          </div>
+
+          <div class="info-strip sim-info-strip">
+            <article class="lesson-card info-card">
+              <div class="label">現在の表示</div>
+              <div class="value" id="modeValue">染料</div>
+            </article>
+            <article class="lesson-card info-card">
+              <div class="label">シミュレーション状態</div>
+              <div class="value" id="statusValue">実行中</div>
+            </article>
+            <article class="lesson-card info-card">
+              <div class="label">格子解像度</div>
+              <div class="value" id="gridValue">---</div>
+            </article>
+            <article class="lesson-card info-card info-card-wide">
+              <div class="label">局所計算の見方</div>
+              <div class="value value-multi" id="ruleValue">
+                近くのセルとの違いを使って，局所的に状態を更新します．
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <p class="small-note note-space">
+          速度矢印は，内部で計算されている速度場を粗い格子で抜き出して表示したものです．
+          発散モードでは赤が「湧き出し」，青が「吸い込み」を表します．
+          圧力モードでは，発散を小さくするための補正量の分布を見ています．
+        </p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>このデモで意識してほしいこと</h2>
+      </div>
+      <div class="panel-body">
+        <div class="card-grid">
+          <article class="lesson-card">
+            <div class="lesson-meta">局所 → 全体</div>
+            <h3 class="lesson-title">一つ一つの式は近傍だけを見る</h3>
+            <p class="lesson-text">
+              各更新式は，自分の近くの値だけを使います．それでも，その計算を全体に一斉に適用すると，
+              画面全体の流れが決まります．
+            </p>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-meta">偏微分方程式の数値化</div>
+            <h3 class="lesson-title">微分は差分として実装される</h3>
+            <p class="lesson-text">
+              実際の計算機では，偏微分は格子上での差分として近似されます．
+              つまり，微分の考え方が，そのまま計算アルゴリズムになります．
+            </p>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-meta">並列計算</div>
+            <h3 class="lesson-title">同じ局所ルールを全点で同時に適用できる</h3>
+            <p class="lesson-text">
+              各格子点で行う計算の形はほぼ同じなので，GPU のような並列計算と相性が良いです．
+              このデモもブラウザ上で GPU を使って計算しています．
+            </p>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-meta">授業との接続</div>
+            <h3 class="lesson-title">微分は変化の局所的な法則を表す</h3>
+            <p class="lesson-text">
+              微分は，その点の近くでどのように変化するかを記述します．
+              その局所法則を集めることで，現象全体を理解できることがあります．
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-actions">
+        <a class="button button-subtle" href="../index.html">第 3 回のページへ戻る</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./main.js"></script>
+</body>
+</html>
