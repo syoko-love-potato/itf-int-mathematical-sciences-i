@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>マクローリン展開を観察する</title>
+  <link rel="stylesheet" href="../assets/css/course.css" />
+  <style>
+    :root {
+      --bg: #f3f3f3;
+      --panel: #ffffff;
+      --text: #111111;
+      --muted: #555555;
+      --border: #cfcfcf;
+      --grid: #ededed;
+      --axis: #9a9a9a;
+      --func: #111111;
+      --poly: #2f67d8;
+      --center: #c63f3f;
+      --error: #a35a16;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .app {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 20px 34px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.7rem, 3vw, 2.5rem);
+      line-height: 1.18;
+      letter-spacing: 0.01em;
+    }
+
+    .lead {
+      margin: 0 0 18px;
+      max-width: 1040px;
+      line-height: 1.8;
+      color: #222222;
+      font-size: 1rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(260px, 1.15fr) minmax(300px, 1.5fr) auto;
+      gap: 14px;
+      align-items: end;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px 18px;
+    }
+
+    .control-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .control-block label {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #444444;
+      cursor: pointer;
+    }
+
+    select {
+      width: 100%;
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      padding: 0 14px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .small-note {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    button {
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      padding: 11px 15px;
+      font: inherit;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover,
+    select:hover {
+      background: #f6f6f6;
+    }
+
+    .formula-panel {
+      margin-top: 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+
+    .formula-title {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .formula-main,
+    .formula-detail {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      line-height: 1.7;
+      word-break: break-word;
+    }
+
+    .formula-main {
+      font-size: 0.98rem;
+      font-weight: 700;
+    }
+
+    .formula-detail {
+      margin-top: 6px;
+      font-size: 0.91rem;
+      color: #333333;
+    }
+
+    .info-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .info-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 12px 14px;
+      min-height: 84px;
+    }
+
+    .info-card .label {
+      font-size: 0.84rem;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      display: inline-block;
+      flex: 0 0 auto;
+    }
+
+    .dot.func { background: var(--func); }
+    .dot.poly { background: var(--poly); }
+    .dot.center { background: var(--center); }
+    .dot.error { background: var(--error); }
+
+    .info-card .value {
+      margin-top: 8px;
+      font-size: 1.04rem;
+      font-weight: 800;
+      line-height: 1.35;
+      font-variant-numeric: tabular-nums;
+      word-break: break-word;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 18px 10px;
+    }
+
+    .panel-header h2 {
+      margin: 0 0 8px;
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
+
+    .panel-header p {
+      margin: 0;
+      line-height: 1.7;
+      color: #333333;
+      font-size: 0.95rem;
+    }
+
+    .canvas-wrap {
+      padding: 14px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(52vw, 430px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #ffffff;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      margin-bottom: 0;
+      line-height: 1.8;
+      color: #2f2f2f;
+      font-size: 0.97rem;
+    }
+
+    code {
+      background: #f1f1f1;
+      border: 1px solid #dedede;
+      border-radius: 7px;
+      padding: 0.16em 0.38em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    @media (max-width: 1100px) {
+      .info-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 980px) {
+      .controls {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .controls > :last-child {
+        grid-column: 1 / -1;
+      }
+
+      .panels {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 390px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        padding: 20px 14px 26px;
+      }
+
+      .controls,
+      .info-strip {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>マクローリン展開を観察する</h1>
+
+    <p class="lead">
+      <code>x=0</code> のまわりで作るマクローリン多項式 <code>M_n(x)</code>（青）を，
+      元の関数（黒）に重ねて表示します．
+      このデモでは<strong>展開の中心は常に 0</strong> とし，その代わりに<strong>関数の種類</strong>と<strong>次数 <code>n</code></strong>を変えられるようにしました．
+      <code>e^x</code>，<code>sin x</code>，<code>cos x</code> のように広い範囲でよく近似できる例に加え，
+      <code>1/(1-x)</code> のように <code>0</code> の近くではよく合う一方で遠くでは合いにくくなる例も見られます．
+    </p>
+
+    <section class="controls" aria-label="操作パネル">
+      <div class="control-block">
+        <label for="functionSelect">関数を選ぶ</label>
+        <select id="functionSelect">
+          <option value="exp">指数関数 e^x</option>
+          <option value="sin">sin x</option>
+          <option value="cos">cos x</option>
+          <option value="geom">1 / (1 - x)</option>
+        </select>
+        <span class="small-note">黒が元の関数，青がマクローリン多項式です．赤い縦線は展開の中心 <code>x=0</code> を表します．</span>
+      </div>
+
+      <div class="control-block">
+        <label for="degreeSlider">次数 n</label>
+        <input id="degreeSlider" type="range" min="0" max="12" value="3" step="1" />
+        <span class="small-note">次数を上げるほど，<code>x=0</code> の近くで元の関数によりよく一致します．</span>
+      </div>
+
+      <div class="control-block">
+        <label for="resetButton">状態</label>
+        <button id="resetButton" type="button">初期状態に戻す</button>
+      </div>
+    </section>
+
+    <section class="formula-panel" aria-label="現在のマクローリン多項式">
+      <div class="formula-title">現在のマクローリン多項式</div>
+      <div class="formula-main" id="formulaMain">M_n(x) = ...</div>
+      <div class="formula-detail" id="formulaDetail">ここに説明が入ります．</div>
+    </section>
+
+    <section class="info-strip" aria-label="現在の状態">
+      <div class="info-card">
+        <div class="label"><span class="dot func"></span>選択中の関数</div>
+        <div class="value" id="functionLabel">指数関数 e^x</div>
+      </div>
+      <div class="info-card">
+        <div class="label"><span class="dot poly"></span>現在の次数</div>
+        <div class="value" id="degreeLabel">n = 3</div>
+      </div>
+      <div class="info-card">
+        <div class="label"><span class="dot center"></span>展開の中心</div>
+        <div class="value" id="centerLabel">x = 0</div>
+      </div>
+      <div class="info-card" hidden>
+        <div class="label"><span class="dot error"></span>拡大図での最大誤差</div>
+        <div class="value" id="errorLabel">max |f(x) - M_n(x)| = 0.000000</div>
+      </div>
+    </section>
+
+    <section class="panels">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>全体のグラフ</h2>
+          <p id="globalDescription">
+            <code>x=0</code> の近くで作った多項式が，どこまで元の関数を近似できるかを全体で観察します．
+          </p>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="globalCanvas" aria-label="全体のグラフ"></canvas>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2><code>x=0</code> 付近の拡大図</h2>
+          <p id="zoomDescription">
+            マクローリン展開は本来，<code>0</code> の近くで関数を扱いやすい多項式で近似するための道具です．
+          </p>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="zoomCanvas" aria-label="x=0付近の拡大図"></canvas>
+        </div>
+      </article>
+    </section>
+
+    <p class="footer-note">
+      マクローリン展開は，テイラー展開のうち<strong>展開の中心を 0 に固定したもの</strong>です．
+      展開する点が決まっているぶん，式は <code>(x-0)^k = x^k</code> となってかなり見やすくなります．
+      一方で，よく合うのはあくまで <code>0</code> の近くです．
+      関数によっては，次数を上げるとかなり広い範囲で使える一方，遠くでは急に合いにくくなることもあります．
+    </p>
+  </main>
+
+  <script>
+    (() => {
+      const globalCanvas = document.getElementById("globalCanvas");
+      const zoomCanvas = document.getElementById("zoomCanvas");
+      const functionSelect = document.getElementById("functionSelect");
+      const degreeSlider = document.getElementById("degreeSlider");
+      const resetButton = document.getElementById("resetButton");
+
+      const functionLabel = document.getElementById("functionLabel");
+      const degreeLabel = document.getElementById("degreeLabel");
+      const errorLabel = document.getElementById("errorLabel");
+      const formulaMain = document.getElementById("formulaMain");
+      const formulaDetail = document.getElementById("formulaDetail");
+      const globalDescription = document.getElementById("globalDescription");
+      const zoomDescription = document.getElementById("zoomDescription");
+
+      const PI = Math.PI;
+
+      const state = {
+        funcKey: functionSelect.value,
+        degree: Number(degreeSlider.value),
+        pending: false,
+      };
+
+      const FUNCTIONS = {
+        exp: {
+          label: "指数関数 e^x",
+          shortLabel: "e^x",
+          fn: (x) => Math.exp(x),
+          global: { xMin: -3.2, xMax: 3.2, yMin: -1.5, yMax: 26 },
+          zoomHalfWidth: 1.2,
+          coefficient: (k, factorial) => 1 / factorial,
+          description:
+            "導関数が何回でも同じ形なので，係数がとても単純です．次数を上げると広い範囲でかなりよく合います．",
+          zoomText:
+            "指数関数では，0 の近くでの近似がとても自然で，次数を上げると広い範囲まで青線が黒線に近づいていきます．",
+          formulaNote:
+            "すべての次数の項が現れ，係数は 1/k! になります．",
+        },
+        sin: {
+          label: "sin x",
+          shortLabel: "sin x",
+          fn: (x) => Math.sin(x),
+          global: { xMin: -2 * PI, xMax: 2 * PI, yMin: -1.8, yMax: 1.8 },
+          zoomHalfWidth: 1.8,
+          coefficient: (k, factorial) => {
+            const m = ((k % 4) + 4) % 4;
+            if (m === 1) return 1 / factorial;
+            if (m === 3) return -1 / factorial;
+            return 0;
+          },
+          description:
+            "奇数次の項だけが現れます．0 のまわりではかなりよく合いますが，遠くまで行くとだんだんずれていきます．",
+          zoomText:
+            "sin x のマクローリン展開では，x，x^3，x^5，… のように奇数次だけが現れます．",
+          formulaNote:
+            "偶数次の係数は 0 になり，奇数次だけが残ります．",
+        },
+        cos: {
+          label: "cos x",
+          shortLabel: "cos x",
+          fn: (x) => Math.cos(x),
+          global: { xMin: -2 * PI, xMax: 2 * PI, yMin: -1.8, yMax: 1.8 },
+          zoomHalfWidth: 1.8,
+          coefficient: (k, factorial) => {
+            const m = ((k % 4) + 4) % 4;
+            if (m === 0) return 1 / factorial;
+            if (m === 2) return -1 / factorial;
+            return 0;
+          },
+          description:
+            "偶数次の項だけが現れます．0 での値が 1 から始まり，次数を上げると波の形を少しずつ再現していきます．",
+          zoomText:
+            "cos x のマクローリン展開では，1，x^2，x^4，… のように偶数次だけが現れます．",
+          formulaNote:
+            "奇数次の係数は 0 になり，偶数次だけが残ります．",
+        },
+        geom: {
+          label: "1 / (1 - x)",
+          shortLabel: "1 / (1 - x)",
+          fn: (x) => Math.abs(x - 1) < 1e-8 ? NaN : 1 / (1 - x),
+          global: { xMin: -1.4, xMax: 1.4, yMin: -6, yMax: 6 },
+          zoomHalfWidth: 0.92,
+          coefficient: (_k, _factorial) => 1,
+          description:
+            "0 の近くでは 1 + x + x^2 + ... で近似できますが，x = 1 の近くでは急に合いにくくなります．",
+          zoomText:
+            "この例では，マクローリン展開が万能ではなく，0 の近くでこそ役立つことがとても分かりやすく現れます．",
+          formulaNote:
+            "幾何級数 1 + x + x^2 + ... の部分和になっています．",
+        },
+      };
+
+      function formatNumber(x) {
+        const ax = Math.abs(x);
+        if (ax !== 0 && (ax < 1e-4 || ax >= 1e5)) {
+          return x.toExponential(3);
+        }
+        return x.toFixed(6);
+      }
+
+      function resizeCanvas(canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(1, Math.round(rect.width));
+        const height = Math.max(1, Math.round(rect.height));
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        return { ctx, width, height };
+      }
+
+      function clearCanvas(ctx, width, height) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function worldToScreen(x, y, world, width, height) {
+        const sx = ((x - world.xMin) / (world.xMax - world.xMin)) * width;
+        const sy = ((world.yMax - y) / (world.yMax - world.yMin)) * height;
+        return { sx, sy };
+      }
+
+      function niceStep(target) {
+        const exponent = Math.floor(Math.log10(target));
+        const base = 10 ** exponent;
+        const scaled = target / base;
+        if (scaled <= 1) return 1 * base;
+        if (scaled <= 2) return 2 * base;
+        if (scaled <= 5) return 5 * base;
+        return 10 * base;
+      }
+
+      function drawGrid(ctx, width, height, world) {
+        const xStep = niceStep((world.xMax - world.xMin) / 8);
+        const yStep = niceStep((world.yMax - world.yMin) / 8);
+
+        ctx.save();
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--grid").trim();
+        ctx.lineWidth = 1;
+
+        const xStart = Math.ceil(world.xMin / xStep);
+        const xEnd = Math.floor(world.xMax / xStep);
+        for (let k = xStart; k <= xEnd; k += 1) {
+          const x = k * xStep;
+          const { sx } = worldToScreen(x, 0, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(sx, 0);
+          ctx.lineTo(sx, height);
+          ctx.stroke();
+        }
+
+        const yStart = Math.ceil(world.yMin / yStep);
+        const yEnd = Math.floor(world.yMax / yStep);
+        for (let k = yStart; k <= yEnd; k += 1) {
+          const y = k * yStep;
+          const { sy } = worldToScreen(0, y, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(0, sy);
+          ctx.lineTo(width, sy);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function drawArrowLine(ctx, x1, y1, x2, y2) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const size = 9;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - size * Math.cos(angle - Math.PI / 7), y2 - size * Math.sin(angle - Math.PI / 7));
+        ctx.lineTo(x2 - size * Math.cos(angle + Math.PI / 7), y2 - size * Math.sin(angle + Math.PI / 7));
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawAxes(ctx, width, height, world) {
+        ctx.save();
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--axis").trim();
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--axis").trim();
+        ctx.lineWidth = 1.6;
+
+        if (world.yMin < 0 && world.yMax > 0) {
+          const { sy } = worldToScreen(0, 0, world, width, height);
+          drawArrowLine(ctx, 0, sy, width - 10, sy);
+        }
+
+        if (world.xMin < 0 && world.xMax > 0) {
+          const { sx } = worldToScreen(0, 0, world, width, height);
+          drawArrowLine(ctx, sx, height, sx, 10);
+        }
+
+        ctx.restore();
+      }
+
+      function coefficients(funcKey, degree) {
+        const data = FUNCTIONS[funcKey];
+        const coeffs = [];
+        let factorial = 1;
+        for (let k = 0; k <= degree; k += 1) {
+          if (k > 0) factorial *= k;
+          coeffs.push(data.coefficient(k, factorial));
+        }
+        return coeffs;
+      }
+
+      function evalPolynomial(x, coeffs) {
+        let sum = 0;
+        let power = 1;
+        for (let k = 0; k < coeffs.length; k += 1) {
+          sum += coeffs[k] * power;
+          power *= x;
+        }
+        return sum;
+      }
+
+      function makeZoomWorld(data, width, height, coeffs) {
+        const xMin = -data.zoomHalfWidth;
+        const xMax = data.zoomHalfWidth;
+        const samples = 600;
+        let yMin = Infinity;
+        let yMax = -Infinity;
+
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const x = xMin + (xMax - xMin) * t;
+          const yf = data.fn(x);
+          const yp = evalPolynomial(x, coeffs);
+          if (Number.isFinite(yf)) {
+            yMin = Math.min(yMin, yf);
+            yMax = Math.max(yMax, yf);
+          }
+          if (Number.isFinite(yp)) {
+            yMin = Math.min(yMin, yp);
+            yMax = Math.max(yMax, yp);
+          }
+        }
+
+        if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) {
+          yMin = -1;
+          yMax = 1;
+        }
+
+        const pad = Math.max(0.12, 0.16 * (yMax - yMin || 1));
+        yMin -= pad;
+        yMax += pad;
+
+        const xSpan = xMax - xMin;
+        const desiredY = xSpan * (height / width);
+        const currentY = yMax - yMin;
+        if (currentY < desiredY) {
+          const extra = (desiredY - currentY) / 2;
+          yMin -= extra;
+          yMax += extra;
+        }
+
+        return { xMin, xMax, yMin, yMax };
+      }
+
+      function drawFunction(ctx, width, height, world, fn, color, lineWidth = 2.4) {
+        const samples = Math.max(1400, Math.round(width * 3.2));
+        const path = new Path2D();
+        let started = false;
+        const clipPad = 0.1 * (world.yMax - world.yMin);
+        const yMinClip = world.yMin - clipPad;
+        const yMaxClip = world.yMax + clipPad;
+        let prevScreen = null;
+
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const x = world.xMin + (world.xMax - world.xMin) * t;
+          const y = fn(x);
+
+          if (!Number.isFinite(y) || y < yMinClip || y > yMaxClip) {
+            started = false;
+            prevScreen = null;
+            continue;
+          }
+
+          const { sx, sy } = worldToScreen(x, y, world, width, height);
+
+          if (!started || (prevScreen && Math.abs(sy - prevScreen.sy) > height * 0.42)) {
+            path.moveTo(sx, sy);
+            started = true;
+          } else {
+            path.lineTo(sx, sy);
+          }
+
+          prevScreen = { sx, sy };
+        }
+
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke(path);
+        ctx.restore();
+      }
+
+      function drawVerticalMarker(ctx, width, height, world) {
+        const { sx } = worldToScreen(0, 0, world, width, height);
+        ctx.save();
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--center").trim();
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([7, 6]);
+        ctx.beginPath();
+        ctx.moveTo(sx, 0);
+        ctx.lineTo(sx, height);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawPoint(ctx, width, height, world, x, y, fillColor) {
+        if (!Number.isFinite(y)) return;
+        const { sx, sy } = worldToScreen(x, y, world, width, height);
+        ctx.save();
+        ctx.fillStyle = fillColor;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 5.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function maxErrorInZoom(data, coeffs) {
+        const xMin = -data.zoomHalfWidth;
+        const xMax = data.zoomHalfWidth;
+        const samples = 1000;
+        let maxErr = 0;
+
+        for (let i = 0; i <= samples; i += 1) {
+          const x = xMin + (xMax - xMin) * (i / samples);
+          const yf = data.fn(x);
+          const yp = evalPolynomial(x, coeffs);
+          if (!Number.isFinite(yf) || !Number.isFinite(yp)) continue;
+          const err = Math.abs(yf - yp);
+          maxErr = Math.max(maxErr, err);
+        }
+
+        return maxErr;
+      }
+
+      function powerText(k) {
+        if (k === 0) return "1";
+        if (k === 1) return "x";
+        return `x^${k}`;
+      }
+
+      function termText(sign, body, isFirst) {
+        if (isFirst) {
+          return sign === "-" ? `−${body}` : body;
+        }
+        return `${sign === "-" ? " − " : " + "}${body}`;
+      }
+
+      function buildFormula(funcKey, degree) {
+        const pieces = [];
+
+        if (funcKey === "exp") {
+          for (let k = 0; k <= degree; k += 1) {
+            const body = k === 0 ? "1" : (k === 1 ? "x" : `x^${k}/${k}!`);
+            pieces.push({ sign: "+", body });
+          }
+        } else if (funcKey === "sin") {
+          for (let k = 1; k <= degree; k += 2) {
+            const sign = (((k - 1) / 2) % 2 === 0) ? "+" : "-";
+            const body = k === 1 ? "x" : `x^${k}/${k}!`;
+            pieces.push({ sign, body });
+          }
+        } else if (funcKey === "cos") {
+          for (let k = 0; k <= degree; k += 2) {
+            const sign = ((k / 2) % 2 === 0) ? "+" : "-";
+            const body = k === 0 ? "1" : `x^${k}/${k}!`;
+            pieces.push({ sign, body });
+          }
+        } else if (funcKey === "geom") {
+          for (let k = 0; k <= degree; k += 1) {
+            pieces.push({ sign: "+", body: powerText(k) });
+          }
+        }
+
+        if (pieces.length === 0) {
+          return "M_0(x) = 0";
+        }
+
+        let text = `M_${degree}(x) = `;
+        pieces.forEach((piece, index) => {
+          text += termText(piece.sign, piece.body, index === 0);
+        });
+        return text;
+      }
+
+      function updateReadout(data, coeffs) {
+        const degree = coeffs.length - 1;
+        const maxErr = maxErrorInZoom(data, coeffs);
+
+        functionLabel.textContent = data.label;
+        degreeLabel.textContent = `n = ${degree}`;
+        errorLabel.textContent = `max |f(x) - M_n(x)| = ${formatNumber(maxErr)}`;
+        formulaMain.textContent = buildFormula(state.funcKey, degree);
+        formulaDetail.textContent = `${data.formulaNote}`;
+        globalDescription.textContent = data.description;
+        zoomDescription.textContent = data.zoomText;
+      }
+
+      function drawPanel(canvas, world, data, coeffs) {
+        const { ctx, width, height } = resizeCanvas(canvas);
+        clearCanvas(ctx, width, height);
+        drawGrid(ctx, width, height, world);
+        drawAxes(ctx, width, height, world);
+        drawFunction(
+          ctx,
+          width,
+          height,
+          world,
+          data.fn,
+          getComputedStyle(document.documentElement).getPropertyValue("--func").trim(),
+          2.5
+        );
+        drawFunction(
+          ctx,
+          width,
+          height,
+          world,
+          (x) => evalPolynomial(x, coeffs),
+          getComputedStyle(document.documentElement).getPropertyValue("--poly").trim(),
+          2.5
+        );
+        drawVerticalMarker(ctx, width, height, world);
+        drawPoint(
+          ctx,
+          width,
+          height,
+          world,
+          0,
+          data.fn(0),
+          getComputedStyle(document.documentElement).getPropertyValue("--center").trim()
+        );
+      }
+
+      function drawAll() {
+        const data = FUNCTIONS[state.funcKey];
+        const coeffs = coefficients(state.funcKey, state.degree);
+        updateReadout(data, coeffs);
+
+        const globalWorld = { ...data.global };
+        drawPanel(globalCanvas, globalWorld, data, coeffs);
+
+        const zoomSize = resizeCanvas(zoomCanvas);
+        const zoomWorld = makeZoomWorld(data, zoomSize.width, zoomSize.height, coeffs);
+        clearCanvas(zoomSize.ctx, zoomSize.width, zoomSize.height);
+        drawGrid(zoomSize.ctx, zoomSize.width, zoomSize.height, zoomWorld);
+        drawAxes(zoomSize.ctx, zoomSize.width, zoomSize.height, zoomWorld);
+        drawFunction(
+          zoomSize.ctx,
+          zoomSize.width,
+          zoomSize.height,
+          zoomWorld,
+          data.fn,
+          getComputedStyle(document.documentElement).getPropertyValue("--func").trim(),
+          2.5
+        );
+        drawFunction(
+          zoomSize.ctx,
+          zoomSize.width,
+          zoomSize.height,
+          zoomWorld,
+          (x) => evalPolynomial(x, coeffs),
+          getComputedStyle(document.documentElement).getPropertyValue("--poly").trim(),
+          2.5
+        );
+        drawVerticalMarker(zoomSize.ctx, zoomSize.width, zoomSize.height, zoomWorld);
+        drawPoint(
+          zoomSize.ctx,
+          zoomSize.width,
+          zoomSize.height,
+          zoomWorld,
+          0,
+          data.fn(0),
+          getComputedStyle(document.documentElement).getPropertyValue("--center").trim()
+        );
+      }
+
+      function scheduleDraw() {
+        if (state.pending) return;
+        state.pending = true;
+        window.requestAnimationFrame(() => {
+          state.pending = false;
+          drawAll();
+        });
+      }
+
+      functionSelect.addEventListener("input", () => {
+        state.funcKey = functionSelect.value;
+        scheduleDraw();
+      });
+
+      degreeSlider.addEventListener("input", () => {
+        state.degree = Number(degreeSlider.value);
+        scheduleDraw();
+      });
+
+      resetButton.addEventListener("click", () => {
+        state.funcKey = "exp";
+        state.degree = 3;
+        functionSelect.value = "exp";
+        degreeSlider.value = "3";
+        scheduleDraw();
+      });
+
+      window.addEventListener("resize", scheduleDraw);
+      window.addEventListener("load", scheduleDraw);
+    })();
+  </script>
+</body>
+<footer class="site-footer">
+  <div class="app">
+    <div class="footer-actions">
+      <a class="button button-subtle" href="./index.html">第5回のページへ戻る</a>
+    </div>
+  </div>
+</footer>
+</html>
