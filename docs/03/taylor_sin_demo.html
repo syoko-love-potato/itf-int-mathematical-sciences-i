@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>テイラー展開を観察する — sin x の局所近似</title>
+  <title>テイラー展開を観察する — sin x の局所的な近似</title>
+  <link rel="stylesheet" href="../assets/css/course.css" />
   <style>
     :root {
       --bg: #f3f3f3;
@@ -242,12 +243,17 @@
       background: #ffffff;
     }
 
-    .footer-note {
+    /* .footer-note {
       margin-top: 18px;
       line-height: 1.8;
       color: #2f2f2f;
       font-size: 0.97rem;
+    } */
+    .footer-note {
+      margin-top: 18px;
+      margin-bottom: 0;
     }
+
 
     code {
       background: #f1f1f1;
@@ -307,9 +313,8 @@
     <h1>テイラー展開を観察する</h1>
 
     <p class="lead">
-      <code>f(x)=sin x</code> を，<code>x=a</code> の近くでテイラー展開して得られる多項式 <code>T_n(x)</code> を重ねて表示します．
-      スライダで<strong>展開中心 <code>a</code></strong> と<strong>次数 <code>n</code></strong> を変えると，
-      「近くではよく合うが，離れるとずれやすい」という局所近似の特徴や，
+      <code>f(x)=sin x</code> （黒）に，<code>x=a</code> の近くでテイラー展開して得られる多項式 <code>T_n(x)</code> （青）を重ねて表示します．
+      スライダで<strong>展開する中心 <code>a</code></strong> と<strong>次数 <code>n</code></strong> を変えると，
       次数を上げるほど近似精度が高まる様子を観察できます．
       特に <code>a=0</code> のときは，マクローリン展開になっています．
     </p>
@@ -318,7 +323,7 @@
       <div class="control-block">
         <label for="centerSlider">展開中心 a</label>
         <input id="centerSlider" type="range" min="-628" max="628" value="0" step="1" />
-        <span class="small-note">範囲は <code>-2π</code> から <code>2π</code> です．黒が <code>sin x</code>，青がテイラー多項式です．赤い縦線が現在の展開中心 <code>x=a</code> を表します．</span>
+        <span class="small-note">範囲は <code>-2π</code> から <code>2π</code> です．黒が <code>sin x</code>，青がテイラー多項式です．赤い縦線が展開の中心 <code>x=a</code> を表します．</span>
       </div>
 
       <div class="control-block">
@@ -333,7 +338,7 @@
       </div>
     </section>
 
-    <section class="formula-panel" aria-label="現在の展開式">
+    <section class="formula-panel" aria-label="現在の展開式" hidden>
       <div class="formula-title">現在の近似の見方</div>
       <div class="formula-main" id="formulaMain">T_n(x) = \sum_{k=0}^{n} f^{(k)}(a) / k! · (x-a)^k</div>
       <div class="formula-detail" id="formulaDetail">ここに現在の係数表示が入ります．</div>
@@ -341,22 +346,22 @@
 
     <section class="info-strip" aria-label="現在の状態">
       <div class="info-card">
-        <div class="label"><span class="dot center"></span>展開中心</div>
+        <div class="label"><span class="dot center"></span>展開の中心</div>
         <div class="value" id="aLabel">a = 0.000000</div>
       </div>
-      <div class="info-card">
-        <div class="label"><span class="dot center"></span>π との比</div>
+      <div class="info-card"  hidden>
+        <div class="label"><span class="dot center" hidden></span>π との比</div>
         <div class="value" id="aPiLabel">a / π = 0.000000</div>
       </div>
       <div class="info-card">
         <div class="label"><span class="dot taylor"></span>現在の次数</div>
         <div class="value" id="degreeLabel">n = 1</div>
       </div>
-      <div class="info-card">
+      <div class="info-card" hidden>
         <div class="label"><span class="dot sin"></span>中心での値</div>
         <div class="value" id="valueLabel">sin(a) = 0.000000</div>
       </div>
-      <div class="info-card">
+      <div class="info-card" hidden>
         <div class="label"><span class="dot error"></span>拡大図での最大誤差</div>
         <div class="value" id="errorLabel">max |sin x - T_n(x)| = 0.000000</div>
       </div>
@@ -389,7 +394,7 @@
         </div>
       </article>
 
-      <article class="panel span-2">
+      <article class="panel span-2" hidden>
         <div class="panel-header">
           <h2>拡大区間での誤差</h2>
           <p>
@@ -405,7 +410,7 @@
 
     <p class="footer-note">
       テイラー展開は，関数の値だけでなく，その点での傾きや曲がり方などの導関数の情報を集めて，
-      関数を局所的に多項式で置き換える方法です．<code>a=0</code> の場合はマクローリン展開です．
+      関数を局所的に多項式で置き換える方法です．
       離れた場所まで必ずよく合うわけではありませんが，近くで複雑な関数を扱いやすい式に置き換えられることが大きな魅力です．
     </p>
   </main>
@@ -850,4 +855,11 @@
     })();
   </script>
 </body>
+<footer class="site-footer">
+  <div class="app">
+    <div class="footer-actions">
+      <a class="button button-subtle" href="./index.html">第3回のページへ戻る</a>
+    </div>
+  </div>
+</footer>
 </html>

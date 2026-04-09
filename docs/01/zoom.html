@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>拡大で感じる微分</title>
+  <style>
+    :root {
+      --bg: #f3f3f3;
+      --panel: #ffffff;
+      --text: #111111;
+      --muted: #555555;
+      --border: #cfcfcf;
+      --grid: #e5e5e5;
+      --cross: #9a9a9a;
+      --line: #111111;
+      --tangent: #87c9ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .app {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 28px 20px 34px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.7rem, 3vw, 2.5rem);
+      line-height: 1.18;
+      letter-spacing: 0.01em;
+    }
+
+    .lead {
+      margin: 0 0 18px;
+      max-width: 980px;
+      line-height: 1.8;
+      color: #222222;
+      font-size: 1rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.8fr) auto auto;
+      gap: 14px;
+      align-items: end;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px 18px;
+    }
+
+    .control-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .control-block label {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #444444;
+      cursor: pointer;
+    }
+
+    .small-note {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .zoom-badge,
+    button {
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      padding: 11px 15px;
+      font: inherit;
+    }
+
+    .zoom-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 120px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover {
+      background: #f6f6f6;
+    }
+
+    .info-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .info-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 12px 14px;
+      min-height: 78px;
+    }
+
+    .info-card .label {
+      font-size: 0.84rem;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+    }
+
+    .info-card .value {
+      margin-top: 8px;
+      font-size: 1.04rem;
+      font-weight: 800;
+      line-height: 1.35;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 18px 10px;
+    }
+
+    .panel-header h2 {
+      margin: 0 0 8px;
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
+
+    .panel-header p {
+      margin: 0;
+      line-height: 1.7;
+      color: #333333;
+      font-size: 0.95rem;
+    }
+
+    .canvas-wrap {
+      padding: 14px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(52vw, 430px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #ffffff;
+      cursor: zoom-in;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      line-height: 1.8;
+      color: #2f2f2f;
+      font-size: 0.97rem;
+    }
+
+    code {
+      background: #f1f1f1;
+      border: 1px solid #dedede;
+      border-radius: 7px;
+      padding: 0.16em 0.38em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    @media (max-width: 980px) {
+      .controls {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .controls > :first-child {
+        grid-column: 1 / -1;
+      }
+
+      .panels {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 390px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        padding: 20px 14px 26px;
+      }
+
+      .controls,
+      .info-strip {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>拡大で感じる微分</h1>
+
+    <p class="lead">
+      微分では，<strong>拡大するとグラフが局所的に直線へ近づく</strong>という見方が重要です．
+      左図では，グラフを拡大することで，その領域が徐々に直線へ近づく様子を確認することができます．
+      一方で，この考え方は万能ではなく，右図のように，
+      <strong>拡大しても折れ目のような構造が現れ続ける</strong>関数も存在します．
+    </p>
+
+    <section class="controls" aria-label="操作パネル">
+      <div class="control-block">
+        <label for="zoomSlider">拡大倍率</label>
+        <input id="zoomSlider" type="range" min="0" max="18" value="0" step="0.01" />
+        <span class="small-note">スライダまたはマウスホイールで拡大・縮小できます．拡大する場所は固定です．</span>
+      </div>
+
+      <div class="zoom-badge" id="zoomLabel">1×</div>
+
+      <div class="control-block">
+        <label for="resetButton">倍率</label>
+        <button id="resetButton" type="button">初期倍率に戻す</button>
+      </div>
+    </section>
+
+    <section class="info-strip" aria-label="現在の状態">
+      <div class="info-card">
+        <div class="label">観察点</div>
+        <div class="value"><code>x = 1/3</code></div>
+      </div>
+      <div class="info-card">
+        <div class="label">表示中の <code>x</code> 幅</div>
+        <div class="value" id="xWidthLabel">0.500000</div>
+      </div>
+    </section>
+
+    <section class="panels">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>左：微分可能な関数</h2>
+          <p>
+            破線は観察点での接線です．倍率を上げるほど，曲線はその接線に近づき，
+            局所的にはほぼ直線であるとわかります．
+          </p>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="smoothCanvas" aria-label="滑らかな関数の拡大図"></canvas>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>右：微分不可能な関数</h2>
+          <p>
+            観察点を固定して拡大しても，折れ目のような構造が現れ続けます．
+            微分可能な関数のように，きれいな一本の接線へ落ち着いていく様子は見られません．
+          </p>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="takagiCanvas" aria-label="高木関数の拡大図"></canvas>
+        </div>
+      </article>
+    </section>
+
+    <p class="footer-note">
+      右図の関数は高木関数という関数です．
+    </p>
+  </main>
+
+  <script>
+    (() => {
+      const smoothCanvas = document.getElementById("smoothCanvas");
+      const takagiCanvas = document.getElementById("takagiCanvas");
+      const zoomSlider = document.getElementById("zoomSlider");
+      const zoomLabel = document.getElementById("zoomLabel");
+      const xWidthLabel = document.getElementById("xWidthLabel");
+      const resetButton = document.getElementById("resetButton");
+
+      const FIXED_CENTER_X = 1 / 3;
+      const BASE_X_SPAN = 0.5;
+
+      const state = {
+        logZoom: Number(zoomSlider.value),
+        pending: false,
+      };
+
+      function smoothF(x) {
+        return 0.18 + 0.36 * x + 0.05 * Math.sin(2 * Math.PI * x) + 0.02 * Math.sin(6 * Math.PI * x);
+      }
+
+      function smoothDF(x) {
+        return 0.36 + 0.10 * Math.PI * Math.cos(2 * Math.PI * x) + 0.12 * Math.PI * Math.cos(6 * Math.PI * x);
+      }
+
+      function phi(t) {
+        const frac = t - Math.floor(t);
+        return frac <= 0.5 ? frac : 1 - frac;
+      }
+
+      function takagi(x, terms) {
+        let sum = 0;
+        let scale = 1;
+        let amp = 1;
+        for (let n = 0; n < terms; n += 1) {
+          sum += amp * phi(scale * x);
+          scale *= 2;
+          amp *= 0.5;
+        }
+        return sum;
+      }
+
+      function takagiTerms(logZoom) {
+        return Math.min(34, Math.max(14, Math.ceil(logZoom) + 14));
+      }
+
+      function getZoom() {
+        return 2 ** state.logZoom;
+      }
+
+      function getXSpan() {
+        return BASE_X_SPAN / getZoom();
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function formatValue(x) {
+        const ax = Math.abs(x);
+        if (ax !== 0 && (ax < 1e-4 || ax >= 1e4)) {
+          return x.toExponential(3);
+        }
+        return x.toFixed(6);
+      }
+
+      function formatZoom(z) {
+        if (z < 10) return `${z.toFixed(2)}×`;
+        if (z < 1000) return `${z.toFixed(1)}×`;
+        return `${z.toExponential(2)}×`;
+      }
+
+      function dyadicStep(span) {
+        const target = span / 6;
+        const exponent = Math.ceil(-Math.log2(target));
+        return 2 ** (-exponent);
+      }
+
+      function resizeCanvas(canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(1, Math.round(rect.width));
+        const height = Math.max(1, Math.round(rect.height));
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        return { ctx, width, height };
+      }
+
+      function clearCanvas(ctx, width, height) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function makeWorld(width, height, centerX, centerY) {
+        const xSpan = getXSpan();
+        const ySpan = xSpan * (height / width);
+        return {
+          xMin: centerX - xSpan / 2,
+          xMax: centerX + xSpan / 2,
+          yMin: centerY - ySpan / 2,
+          yMax: centerY + ySpan / 2,
+        };
+      }
+
+      function drawGrid(ctx, width, height, world) {
+        const { xMin, xMax, yMin, yMax } = world;
+        const xSpan = xMax - xMin;
+        const ySpan = yMax - yMin;
+        const step = dyadicStep(xSpan);
+
+        ctx.save();
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--grid").trim();
+        ctx.lineWidth = 1;
+
+        const kxMin = Math.floor(xMin / step);
+        const kxMax = Math.ceil(xMax / step);
+        for (let k = kxMin; k <= kxMax; k += 1) {
+          const x = k * step;
+          const sx = ((x - xMin) / xSpan) * width;
+          ctx.beginPath();
+          ctx.moveTo(sx, 0);
+          ctx.lineTo(sx, height);
+          ctx.stroke();
+        }
+
+        const kyMin = Math.floor(yMin / step);
+        const kyMax = Math.ceil(yMax / step);
+        for (let k = kyMin; k <= kyMax; k += 1) {
+          const y = k * step;
+          const sy = ((yMax - y) / ySpan) * height;
+          ctx.beginPath();
+          ctx.moveTo(0, sy);
+          ctx.lineTo(width, sy);
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--cross").trim();
+        ctx.lineWidth = 1.2;
+
+        ctx.beginPath();
+        ctx.moveTo(width / 2, 0);
+        ctx.lineTo(width / 2, height);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, height / 2);
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function buildPath(width, height, world, fn) {
+        const { xMin, xMax, yMin, yMax } = world;
+        const xSpan = xMax - xMin;
+        const ySpan = yMax - yMin;
+        const samples = Math.max(1200, Math.min(6000, Math.round(width * 4)));
+        const path = new Path2D();
+
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const x = xMin + t * xSpan;
+          const y = fn(x);
+          const sx = t * width;
+          const sy = ((yMax - y) / ySpan) * height;
+          if (i === 0) {
+            path.moveTo(sx, sy);
+          } else {
+            path.lineTo(sx, sy);
+          }
+        }
+        return path;
+      }
+
+      function drawCurve(ctx, width, height, world, fn) {
+        const path = buildPath(width, height, world, fn);
+        ctx.save();
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--line").trim();
+        ctx.lineWidth = 2.4;
+        ctx.stroke(path);
+        ctx.restore();
+      }
+
+      function drawTangent(ctx, width, height, world, x0, y0, slope) {
+        const { xMin, xMax, yMax, yMin } = world;
+        const ySpan = yMax - yMin;
+        const tangentY = (x) => y0 + slope * (x - x0);
+
+        ctx.save();
+        ctx.setLineDash([8, 6]);
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--tangent").trim();
+        ctx.beginPath();
+        ctx.moveTo(0, ((yMax - tangentY(xMin)) / ySpan) * height);
+        ctx.lineTo(width, ((yMax - tangentY(xMax)) / ySpan) * height);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawCenterPoint(ctx, width, height) {
+        ctx.save();
+        ctx.fillStyle = "#111111";
+        ctx.beginPath();
+        ctx.arc(width / 2, height / 2, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawSmoothPanel() {
+        const { ctx, width, height } = resizeCanvas(smoothCanvas);
+        const x0 = FIXED_CENTER_X;
+        const y0 = smoothF(x0);
+        const slope = smoothDF(x0);
+        const world = makeWorld(width, height, x0, y0);
+
+        clearCanvas(ctx, width, height);
+        drawGrid(ctx, width, height, world);
+        drawCurve(ctx, width, height, world, smoothF);
+        drawTangent(ctx, width, height, world, x0, y0, slope);
+        drawCenterPoint(ctx, width, height);
+      }
+
+      function drawTakagiPanel() {
+        const { ctx, width, height } = resizeCanvas(takagiCanvas);
+        const x0 = FIXED_CENTER_X;
+        const terms = takagiTerms(state.logZoom);
+        const takagiFn = (x) => takagi(x, terms);
+        const y0 = takagiFn(x0);
+        const world = makeWorld(width, height, x0, y0);
+
+        clearCanvas(ctx, width, height);
+        drawGrid(ctx, width, height, world);
+        drawCurve(ctx, width, height, world, takagiFn);
+        drawCenterPoint(ctx, width, height);
+      }
+
+      function updateReadout() {
+        zoomLabel.textContent = formatZoom(getZoom());
+        xWidthLabel.textContent = formatValue(getXSpan());
+      }
+
+      function drawAll() {
+        updateReadout();
+        drawSmoothPanel();
+        drawTakagiPanel();
+      }
+
+      function scheduleDraw() {
+        if (state.pending) return;
+        state.pending = true;
+        window.requestAnimationFrame(() => {
+          state.pending = false;
+          drawAll();
+        });
+      }
+
+      function changeZoom(delta) {
+        state.logZoom = clamp(state.logZoom + delta, 0, 18);
+        zoomSlider.value = state.logZoom.toFixed(2);
+        scheduleDraw();
+      }
+
+      function handleWheel(event) {
+        event.preventDefault();
+        changeZoom(event.deltaY < 0 ? 0.35 : -0.35);
+      }
+
+      zoomSlider.addEventListener("input", () => {
+        state.logZoom = Number(zoomSlider.value);
+        scheduleDraw();
+      });
+
+      resetButton.addEventListener("click", () => {
+        state.logZoom = 0;
+        zoomSlider.value = "0";
+        scheduleDraw();
+      });
+
+      [smoothCanvas, takagiCanvas].forEach((canvas) => {
+        canvas.addEventListener("wheel", handleWheel, { passive: false });
+      });
+
+      window.addEventListener("resize", scheduleDraw);
+      window.addEventListener("load", scheduleDraw);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>指数関数と対数関数の極限</title>
+  <link rel="stylesheet" href="../assets/css/course.css" />
+  <style>
+    :root {
+      --bg: #f3f3f3;
+      --panel: #ffffff;
+      --text: #111111;
+      --muted: #555555;
+      --border: #cfcfcf;
+      --grid: #e7e7e7;
+      --axis: #9a9a9a;
+      --line: #111111;
+      --accent: #444444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 20px 34px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.7rem, 3vw, 2.4rem);
+      line-height: 1.2;
+    }
+
+    .lead {
+      margin: 0 0 18px;
+      line-height: 1.8;
+      color: #222;
+      max-width: 940px;
+    }
+
+    .stack {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 18px 18px 8px;
+    }
+
+    .panel-header h2 {
+      margin: 0 0 8px;
+      font-size: 1.12rem;
+      line-height: 1.35;
+    }
+
+    .panel-header p {
+      margin: 0;
+      line-height: 1.75;
+      color: #333;
+      font-size: 0.96rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(280px, 2fr) minmax(160px, auto) auto;
+      gap: 14px;
+      align-items: end;
+      padding: 10px 18px 0;
+    }
+
+    .control-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .control-block label {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .small-note {
+      font-size: 0.89rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .value-badge,
+    button {
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      padding: 11px 15px;
+      font: inherit;
+    }
+
+    .value-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 140px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover {
+      background: #f6f6f6;
+    }
+
+    .info-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px 18px 0;
+    }
+
+    .info-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 12px 14px;
+      min-height: 84px;
+    }
+
+    .info-card .label {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .info-card .value {
+      margin-top: 8px;
+      font-size: 1.02rem;
+      font-weight: 800;
+      line-height: 1.45;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .canvas-wrap {
+      padding: 16px 18px 18px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(48vw, 430px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      line-height: 1.8;
+      color: #2f2f2f;
+      font-size: 0.97rem;
+    }
+
+    code {
+      background: #f1f1f1;
+      border: 1px solid #dedede;
+      border-radius: 7px;
+      padding: 0.16em 0.38em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    @media (max-width: 920px) {
+      .controls {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .controls > :first-child {
+        grid-column: 1 / -1;
+      }
+
+      .info-strip {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 380px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        padding: 20px 14px 26px;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>指数関数と対数関数の極限</h1>
+
+    <p class="lead">
+      底 <code>a</code> を動かすと，指数関数 <code>y = a<sup>x</sup></code> と対数関数
+      <code>y = log<sub>a</sub>x</code> の形がどう変わるかを観察できます．
+      とくに，<strong>0&lt;a&lt;1</strong> のときと <strong>a&gt;1</strong> のときで，
+      <strong>x を大きくしたとき・0 に近づけたときのふるまい</strong>が逆になることに注目してください．
+    </p>
+
+    <section class="stack">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>指数関数 <code>y = a<sup>x</sup></code></h2>
+          <p>
+            底 <code>a</code> が 1 より大きいと右上がり，0 と 1 の間にあると右下がりになります．
+            情報欄では，<code>x→∞</code> と <code>x→−∞</code> のときのふるまいを確認できます．
+          </p>
+        </div>
+
+        <section class="controls" aria-label="指数関数の操作パネル">
+          <div class="control-block">
+            <label for="expSlider">底 a の大きさ</label>
+            <input id="expSlider" type="range" min="0.10" max="4.00" value="2.00" step="0.01" />
+            <span class="small-note">
+              底は正で，しかも 1 ではない必要があります．
+            </span>
+          </div>
+
+          <div class="value-badge" id="expABadge">a = 2.00</div>
+
+          <div class="control-block">
+            <label for="expReset">底</label>
+            <button id="expReset" type="button">2.00 に戻す</button>
+          </div>
+        </section>
+
+        <section class="info-strip" aria-label="指数関数の現在の状態">
+          <div class="info-card">
+            <div class="label">現在の底</div>
+            <div class="value" id="expCurrentA">2.00</div>
+          </div>
+          <div class="info-card">
+            <div class="label">x を大きくすると</div>
+            <div class="value" id="expLimitPos">∞ に大きくなる</div>
+          </div>
+          <div class="info-card">
+            <div class="label">x を小さくすると</div>
+            <div class="value" id="expLimitNeg">0 に近づく</div>
+          </div>
+        </section>
+
+        <div class="canvas-wrap">
+          <canvas id="expCanvas" aria-label="指数関数のグラフ"></canvas>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>対数関数 <code>y = log<sub>a</sub>x</code></h2>
+          <p>
+            対数関数は <code>x&gt;0</code> でのみ定義されます．
+            底 <code>a</code> が 1 より大きいと増加し，0 と 1 の間にあると減少します．
+            <code>x→0+</code> や <code>x→∞</code> のときのふるまいにも注目してください．
+          </p>
+        </div>
+
+        <section class="controls" aria-label="対数関数の操作パネル">
+          <div class="control-block">
+            <label for="logSlider">底 a の大きさ</label>
+            <input id="logSlider" type="range" min="0.10" max="4.00" value="2.00" step="0.01" />
+            <span class="small-note">
+              底は正で，しかも 1 ではない必要があります．
+              1 に近いほど，グラフの傾きが大きく変わります．
+            </span>
+          </div>
+
+          <div class="value-badge" id="logABadge">a = 2.00</div>
+
+          <div class="control-block">
+            <label for="logReset">底</label>
+            <button id="logReset" type="button">2.00 に戻す</button>
+          </div>
+        </section>
+
+        <section class="info-strip" aria-label="対数関数の現在の状態">
+          <div class="info-card">
+            <div class="label">現在の底</div>
+            <div class="value" id="logCurrentA">2.00</div>
+          </div>
+          <div class="info-card">
+            <div class="label">x を大きくすると</div>
+            <div class="value" id="logLimitPos">∞ に大きくなる</div>
+          </div>
+          <div class="info-card">
+            <div class="label">x を 0 に近づけると</div>
+            <div class="value" id="logLimitZero">−∞ に小さくなる</div>
+          </div>
+        </section>
+
+        <div class="canvas-wrap">
+          <canvas id="logCanvas" aria-label="対数関数のグラフ"></canvas>
+        </div>
+      </article>
+    </section>
+
+    <p class="footer-note">
+      スライダを動かして，<code>0&lt;a&lt;1</code> と <code>a&gt;1</code> の両方を試してみてください．
+      指数関数と対数関数で，極限の向きが対応していることも確認できます．
+    </p>
+  </main>
+
+  <script>
+    (() => {
+      const rootStyle = getComputedStyle(document.documentElement);
+      const colors = {
+        grid: rootStyle.getPropertyValue('--grid').trim(),
+        axis: rootStyle.getPropertyValue('--axis').trim(),
+        line: rootStyle.getPropertyValue('--line').trim(),
+      };
+
+      const expSlider = document.getElementById('expSlider');
+      const logSlider = document.getElementById('logSlider');
+      const expReset = document.getElementById('expReset');
+      const logReset = document.getElementById('logReset');
+
+      const expABadge = document.getElementById('expABadge');
+      const logABadge = document.getElementById('logABadge');
+      const expCurrentA = document.getElementById('expCurrentA');
+      const logCurrentA = document.getElementById('logCurrentA');
+      const expLimitPos = document.getElementById('expLimitPos');
+      const expLimitNeg = document.getElementById('expLimitNeg');
+      const logLimitPos = document.getElementById('logLimitPos');
+      const logLimitZero = document.getElementById('logLimitZero');
+
+      const expCanvas = document.getElementById('expCanvas');
+      const logCanvas = document.getElementById('logCanvas');
+
+      function isValidBase(a) {
+        return a > 0 && Math.abs(a - 1) > 1e-6;
+      }
+
+      function adjustBase(raw) {
+        let a = Number(raw);
+        if (a <= 0) a = 0.10;
+        if (Math.abs(a - 1) < 0.015) {
+          a = a < 1 ? 0.99 : 1.01;
+        }
+        return a;
+      }
+
+      function formatA(a) {
+        return a.toFixed(2);
+      }
+
+      function resizeCanvas(canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(1, Math.round(rect.width));
+        const height = Math.max(1, Math.round(rect.height));
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        return { ctx, width, height };
+      }
+
+      function clear(ctx, width, height) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function worldToScreen(x, y, world, width, height) {
+        return {
+          sx: ((x - world.xMin) / (world.xMax - world.xMin)) * width,
+          sy: ((world.yMax - y) / (world.yMax - world.yMin)) * height
+        };
+      }
+
+      function drawGrid(ctx, width, height, world, xStep, yStep) {
+        ctx.save();
+        ctx.strokeStyle = colors.grid;
+        ctx.lineWidth = 1;
+
+        for (let x = Math.ceil(world.xMin / xStep) * xStep; x <= world.xMax + 1e-9; x += xStep) {
+          const p = worldToScreen(x, 0, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(p.sx, 0);
+          ctx.lineTo(p.sx, height);
+          ctx.stroke();
+        }
+
+        for (let y = Math.ceil(world.yMin / yStep) * yStep; y <= world.yMax + 1e-9; y += yStep) {
+          const p = worldToScreen(0, y, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(0, p.sy);
+          ctx.lineTo(width, p.sy);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function drawArrowAxes(ctx, width, height, world) {
+        ctx.save();
+        ctx.strokeStyle = colors.axis;
+        ctx.fillStyle = colors.axis;
+        ctx.lineWidth = 1.6;
+
+        if (world.yMin < 0 && world.yMax > 0) {
+          const p = worldToScreen(0, 0, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(0, p.sy);
+          ctx.lineTo(width - 12, p.sy);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(width - 12, p.sy - 5);
+          ctx.lineTo(width, p.sy);
+          ctx.lineTo(width - 12, p.sy + 5);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        if (world.xMin < 0 && world.xMax > 0) {
+          const p = worldToScreen(0, 0, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(p.sx, height);
+          ctx.lineTo(p.sx, 12);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(p.sx - 5, 12);
+          ctx.lineTo(p.sx, 0);
+          ctx.lineTo(p.sx + 5, 12);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      function drawCurve(ctx, width, height, world, fn, xStart, xEnd, samples) {
+        ctx.save();
+        ctx.strokeStyle = colors.line;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+
+        let began = false;
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const x = xStart + (xEnd - xStart) * t;
+          const y = fn(x);
+
+          if (!Number.isFinite(y)) {
+            began = false;
+            continue;
+          }
+
+          const p = worldToScreen(x, y, world, width, height);
+          if (p.sy < -3000 || p.sy > height + 3000) {
+            began = false;
+            continue;
+          }
+
+          if (!began) {
+            ctx.moveTo(p.sx, p.sy);
+            began = true;
+          } else {
+            ctx.lineTo(p.sx, p.sy);
+          }
+        }
+
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function expBehavior(a) {
+        return a > 1
+          ? ['∞ に大きくなる', '0 に近づく']
+          : ['0 に近づく', '∞ に大きくなる'];
+      }
+
+      function logBehavior(a) {
+        return a > 1
+          ? ['∞ に大きくなる', '−∞ に小さくなる']
+          : ['−∞ に小さくなる', '∞ に大きくなる'];
+      }
+
+      function syncSlider(slider) {
+        const a = adjustBase(slider.value);
+        slider.value = a.toFixed(2);
+        return a;
+      }
+
+      function updateExpReadout(a) {
+        expABadge.textContent = `a = ${formatA(a)}`;
+        expCurrentA.textContent = formatA(a);
+        const b = expBehavior(a);
+        expLimitPos.textContent = b[0];
+        expLimitNeg.textContent = b[1];
+      }
+
+      function updateLogReadout(a) {
+        logABadge.textContent = `a = ${formatA(a)}`;
+        logCurrentA.textContent = formatA(a);
+        const b = logBehavior(a);
+        logLimitPos.textContent = b[0];
+        logLimitZero.textContent = b[1];
+      }
+
+      function drawExp(a) {
+        const r = resizeCanvas(expCanvas);
+        const ctx = r.ctx, width = r.width, height = r.height;
+        clear(ctx, width, height);
+
+        const world = { xMin: -4, xMax: 4, yMin: -1, yMax: 8 };
+        drawGrid(ctx, width, height, world, 1, 1);
+        drawArrowAxes(ctx, width, height, world);
+
+        if (!isValidBase(a)) return;
+
+        drawCurve(ctx, width, height, world, (x) => Math.pow(a, x), world.xMin, world.xMax, 1800);
+      }
+
+      function drawLog(a) {
+        const r = resizeCanvas(logCanvas);
+        const ctx = r.ctx, width = r.width, height = r.height;
+        clear(ctx, width, height);
+
+        const world = { xMin: -1, xMax: 8, yMin: -4, yMax: 4 };
+        drawGrid(ctx, width, height, world, 1, 1);
+        drawArrowAxes(ctx, width, height, world);
+
+        if (!isValidBase(a)) return;
+
+        drawCurve(ctx, width, height, world, (x) => Math.log(x) / Math.log(a), 0.03, world.xMax, 2400);
+      }
+
+      function drawAll() {
+        const expA = syncSlider(expSlider);
+        const logA = syncSlider(logSlider);
+        updateExpReadout(expA);
+        updateLogReadout(logA);
+        drawExp(expA);
+        drawLog(logA);
+      }
+
+      expSlider.addEventListener('input', drawAll);
+      logSlider.addEventListener('input', drawAll);
+
+      expReset.addEventListener('click', () => {
+        expSlider.value = '2.00';
+        drawAll();
+      });
+
+      logReset.addEventListener('click', () => {
+        logSlider.value = '2.00';
+        drawAll();
+      });
+
+      window.addEventListener('resize', drawAll);
+      window.addEventListener('load', drawAll);
+    })();
+  </script>
+</body>
+<footer class="site-footer">
+  <div class="app">
+    <div class="button-row">
+      <a class="button button-subtle" href="./index.html">第2回のページへ戻る</a>
+    </div>
+  </div>
+</footer>
+</html>
