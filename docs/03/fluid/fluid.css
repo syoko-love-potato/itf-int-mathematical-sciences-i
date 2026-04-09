@@ -108,6 +108,10 @@
   line-height: 1.75;
 }
 
+.unsupported-message[hidden] {
+  display: none !important;
+}
+
 .sim-info-strip {
   margin-top: 0;
 }

@@ -416,7 +416,8 @@ uniform sampler2D uVelocity;
 uniform int uMode;
 
 vec3 signedColor(float value) {
-  float amount = 1.0 - exp(-abs(value) * 18.0);
+  float amount = 1.0 - exp(-abs(value) * 100.0);
+  amount = pow(amount, 0.8);
   vec3 positive = vec3(0.88, 0.26, 0.26);
   vec3 negative = vec3(0.24, 0.35, 0.88);
   vec3 target = value >= 0.0 ? positive : negative;
@@ -424,8 +425,8 @@ vec3 signedColor(float value) {
 }
 
 vec3 pressureColor(float value) {
-  float t = 0.5 + 0.5 * (2.0 / 3.14159265) * atan(2.6 * value);
-  float gray = 1.0 - 0.84 * t;
+  float t = 0.5 + 0.5 * (2.0 / 3.14159265) * atan(50.0 * value);
+  float gray = mix(0.08, 0.98, 1.0 - t);
   return vec3(gray);
 }
 
@@ -434,14 +435,16 @@ vec3 velocityColor(vec2 velocity) {
   if (speed < 0.0004) return vec3(0.96);
   float angle = atan(velocity.y, velocity.x);
   vec3 hue = 0.55 + 0.35 * cos(angle + vec3(0.0, 2.0943951, 4.1887902));
-  float amount = 1.0 - exp(-speed * 42.0);
+  float amount = 1.0 - exp(-speed * 100.0);
   return mix(vec3(0.96), hue, amount);
 }
 
 void main() {
   if (uMode == 0) {
     float dye = clamp(SAMPLE(uDye, vUv).x, 0.0, 1.0);
-    FRAG_COLOR = vec4(vec3(1.0 - dye), 1.0);
+    vec3 background = vec3(1.0, 1.0, 1.0);
+    vec3 ink = vec3(0.0, 0.68, 0.92);
+    FRAG_COLOR = vec4(mix(background, ink, dye), 1.0);
   } else if (uMode == 1) {
     vec2 velocity = SAMPLE(uVelocity, vUv).xy;
     FRAG_COLOR = vec4(velocityColor(velocity), 1.0);
@@ -726,9 +729,9 @@ function destroySimulation() {
 function seedDemoState() {
   if (!sim) return;
   const splats = [
-    [0.32, 0.62, 0.020, -0.010, 0.85],
-    [0.68, 0.44, -0.018, 0.014, 0.75],
-    [0.50, 0.72, 0.000, -0.020, 0.65],
+    [0.32, 0.62, 0.20, -1.0, 0.85],
+    [0.68, 0.44, -0.18, 1.4, 0.75],
+    [0.50, 0.72, 0.000, -2.0, 0.65],
   ];
   for (const [x, y, vx, vy, density] of splats) {
     applySplat(x, y, vx, vy, density);
