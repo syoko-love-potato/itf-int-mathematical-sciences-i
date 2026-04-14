@@ -272,17 +272,16 @@
 
     <p class="lead">
       <code>f(x)=\dfrac{x^2-1}{x-1}</code> は <code>x=1</code> でそのまま値を入れることができません．
-      しかし，<strong>左から近づいたとき</strong>と<strong>右から近づいたとき</strong>に
+      しかし，<strong>左右から近づいたとき</strong>に
       <code>f(x)</code> がどの値へ近づくかは観察できます．
       下のスライダでは，左右の 2 点を <code>x=1</code> に近づけていきます．
-      近づき方は対数的にゆっくりになり，<strong>ちょうど <code>x=1</code> には重ならない</strong>ようにしてあります．
     </p>
 
     <section class="controls" aria-label="操作パネル">
       <div class="control-block">
         <label for="approachSlider">接近度</label>
         <input id="approachSlider" type="range" min="0" max="1000" value="0" step="1" />
-        <span class="small-note">左の点は <code>x=1-\delta</code>，右の点は <code>x=1+\delta</code> です．スライダを右へ動かすほど <code>\delta</code> が小さくなりますが，<code>\delta=0</code> にはなりません．</span>
+        <span class="small-note">左の点は <code>x=1-\delta</code>，右の点は <code>x=1+\delta</code> です．スライダを右へ動かすほど <code>\delta</code> が小さくなります．</span>
       </div>
 
       <div class="distance-badge" id="distanceLabel">|x-1| = 1.500000</div>

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>区分求積法を観察する</title>
+  <link rel="stylesheet" href="../assets/css/course.css" />
+  <style>
+    :root {
+      --bg: #f3f3f3;
+      --panel: #ffffff;
+      --text: #111111;
+      --muted: #555555;
+      --border: #cfd6de;
+      --grid: #edf1f5;
+      --axis: #9aa7b7;
+      --curve: #111111;
+      --exact-fill: rgba(108, 135, 166, 0.13);
+      --sum-fill: rgba(121, 151, 187, 0.42);
+      --sum-stroke: #6f8fb4;
+      --frame: #d6dde6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .app {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 20px 34px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.7rem, 3vw, 2.5rem);
+      line-height: 1.18;
+      letter-spacing: 0.01em;
+    }
+
+    .lead {
+      margin: 0 0 18px;
+      max-width: 1080px;
+      line-height: 1.8;
+      color: #222222;
+      font-size: 1rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px 18px;
+    }
+
+    .control-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .control-block label {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #5e7ea7;
+      cursor: pointer;
+    }
+
+    .small-note {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .slider-value {
+      min-width: 108px;
+      text-align: center;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.45;
+    }
+
+    .info-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .info-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 12px 14px;
+      min-height: 84px;
+    }
+
+    .info-card .label {
+      font-size: 0.84rem;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+    }
+
+    .info-card .value {
+      margin-top: 8px;
+      font-size: 1.04rem;
+      font-weight: 800;
+      line-height: 1.35;
+      font-variant-numeric: tabular-nums;
+      word-break: break-word;
+    }
+
+    .panel {
+      margin-top: 18px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 18px 10px;
+    }
+
+    .panel-header h2 {
+      margin: 0 0 8px;
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
+
+    .panel-header p {
+      margin: 0;
+      line-height: 1.7;
+      color: #333333;
+      font-size: 0.95rem;
+    }
+
+    .canvas-wrap {
+      padding: 14px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(52vw, 440px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #ffffff;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      margin-bottom: 0;
+      line-height: 1.8;
+      color: #2f2f2f;
+      font-size: 0.97rem;
+    }
+
+    code {
+      background: #f1f1f1;
+      border: 1px solid #dedede;
+      border-radius: 7px;
+      padding: 0.16em 0.38em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    @media (max-width: 980px) {
+      .controls,
+      .info-strip {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 390px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        padding: 20px 14px 26px;
+      }
+
+      canvas {
+        height: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>区分求積法を観察する</h1>
+
+    <p class="lead">
+      積分区間 <code>[0,8]</code> における，曲線と x 軸に挟まれた部分の面積を，
+      細い長方形の和で近似します．
+      分割数を増やすほど長方形の幅が細かくなり，その和が真の面積に近づいていく様子を観察できます．
+    </p>
+
+    <section class="controls" aria-label="操作パネル">
+      <div class="control-block">
+        <label for="partitionSlider">分割数</label>
+        <input id="partitionSlider" type="range" min="1" max="40" value="8" step="1" />
+      </div>
+      <div class="slider-value" id="sliderValue">n = 8</div>
+    </section>
+
+    <section class="info-strip" aria-label="現在の値">
+      <div class="info-card">
+        <div class="label">1 区間の幅</div>
+        <div class="value" id="dxLabel">Δx = 1.000000</div>
+      </div>
+      <div class="info-card">
+        <div class="label">長方形の和</div>
+        <div class="value" id="approxLabel">S_n = 0.000000</div>
+      </div>
+      <div class="info-card">
+        <div class="label">真の面積</div>
+        <div class="value" id="exactLabel">I = 0.000000</div>
+      </div>
+      <div class="info-card">
+        <div class="label">誤差</div>
+        <div class="value" id="errorLabel">|I - S_n| = 0.000000</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>曲線の面積と長方形による近似</h2>
+        <p>
+          黒線が関数 <code>f(x)</code>，薄い色が真の面積，やや濃い長方形が区分求積法による近似です．
+          分割数を増やすと，より曲線の形に近い近似になります．
+        </p>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="areaCanvas" aria-label="区分求積法の図"></canvas>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    (() => {
+      const areaCanvas = document.getElementById("areaCanvas");
+      const partitionSlider = document.getElementById("partitionSlider");
+      const sliderValue = document.getElementById("sliderValue");
+
+      const dxLabel = document.getElementById("dxLabel");
+      const approxLabel = document.getElementById("approxLabel");
+      const exactLabel = document.getElementById("exactLabel");
+      const errorLabel = document.getElementById("errorLabel");
+
+      const A = 0;
+      const B = 8;
+      const MAX_N = 40;
+
+      const COLORS = {
+        grid: "#edf1f5",
+        axis: "#9aa7b7",
+        curve: "#111111",
+        exactFill: "rgba(108, 135, 166, 0.13)",
+        sumFill: "rgba(121, 151, 187, 0.42)",
+        sumStroke: "#6f8fb4",
+        text: "#374151",
+        frame: "#d6dde6",
+      };
+
+      const state = {
+        n: Number(partitionSlider.value),
+        pending: false,
+      };
+
+      function f(x) {
+        return 1
+          + 0.035 * (x * x * x / 3 - 3.5 * x * x + 10 * x)
+          + 0.10 * Math.cos(0.9 * x - 0.6);
+      }
+
+      function F(x) {
+        return x
+          + 0.035 * (x * x * x * x / 12 - (3.5 / 3) * x * x * x + 5 * x * x)
+          + (0.10 / 0.9) * Math.sin(0.9 * x - 0.6);
+      }
+
+      const EXACT_AREA = F(B) - F(A);
+      const APPROX_CACHE = Array.from({ length: MAX_N }, (_, i) => rightSum(i + 1));
+
+      function rightSum(n) {
+        const dx = (B - A) / n;
+        let sum = 0;
+        for (let i = 0; i < n; i += 1) {
+          const x1 = A + (i + 1) * dx;
+          sum += f(x1) * dx;
+        }
+        return sum;
+      }
+
+      function formatNumber(x) {
+        const ax = Math.abs(x);
+        if (ax !== 0 && (ax < 1e-4 || ax >= 1e5)) {
+          return x.toExponential(3);
+        }
+        return x.toFixed(6);
+      }
+
+      function resizeCanvas(canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(1, Math.round(rect.width));
+        const height = Math.max(1, Math.round(rect.height));
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        return { ctx, width, height };
+      }
+
+      function clearCanvas(ctx, width, height) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function worldToScreen(x, y, world, width, height) {
+        const sx = ((x - world.xMin) / (world.xMax - world.xMin)) * width;
+        const sy = ((world.yMax - y) / (world.yMax - world.yMin)) * height;
+        return { sx, sy };
+      }
+
+      function niceStep(target) {
+        const exponent = Math.floor(Math.log10(target));
+        const base = 10 ** exponent;
+        const scaled = target / base;
+        if (scaled <= 1) return 1 * base;
+        if (scaled <= 2) return 2 * base;
+        if (scaled <= 5) return 5 * base;
+        return 10 * base;
+      }
+
+      function drawFrame(ctx, width, height) {
+        ctx.save();
+        ctx.strokeStyle = COLORS.frame;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
+        ctx.restore();
+      }
+
+      function drawGrid(ctx, width, height, world) {
+        const xStep = niceStep((world.xMax - world.xMin) / 8);
+        const yStep = niceStep((world.yMax - world.yMin) / 7);
+
+        ctx.save();
+        ctx.strokeStyle = COLORS.grid;
+        ctx.lineWidth = 1;
+
+        const xStart = Math.ceil(world.xMin / xStep);
+        const xEnd = Math.floor(world.xMax / xStep);
+        for (let k = xStart; k <= xEnd; k += 1) {
+          const x = k * xStep;
+          const { sx } = worldToScreen(x, 0, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(sx, 0);
+          ctx.lineTo(sx, height);
+          ctx.stroke();
+        }
+
+        const yStart = Math.ceil(world.yMin / yStep);
+        const yEnd = Math.floor(world.yMax / yStep);
+        for (let k = yStart; k <= yEnd; k += 1) {
+          const y = k * yStep;
+          const { sy } = worldToScreen(0, y, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(0, sy);
+          ctx.lineTo(width, sy);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function drawAxesAtZero(ctx, width, height, world) {
+        ctx.save();
+        ctx.strokeStyle = COLORS.axis;
+        ctx.lineWidth = 1.2;
+
+        if (world.yMin <= 0 && 0 <= world.yMax) {
+          const { sy } = worldToScreen(0, 0, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(0, sy);
+          ctx.lineTo(width, sy);
+          ctx.stroke();
+        }
+
+        if (world.xMin <= 0 && 0 <= world.xMax) {
+          const { sx } = worldToScreen(0, 0, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(sx, 0);
+          ctx.lineTo(sx, height);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function drawPolyline(ctx, points, world, width, height, strokeStyle, lineWidth) {
+        if (points.length < 2) {
+          return;
+        }
+        ctx.save();
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth = lineWidth;
+        ctx.beginPath();
+        points.forEach((point, index) => {
+          const { sx, sy } = worldToScreen(point.x, point.y, world, width, height);
+          if (index === 0) {
+            ctx.moveTo(sx, sy);
+          } else {
+            ctx.lineTo(sx, sy);
+          }
+        });
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function fillExactArea(ctx, world, width, height) {
+        const samples = 700;
+        ctx.save();
+        ctx.fillStyle = COLORS.exactFill;
+        ctx.beginPath();
+        const start = worldToScreen(A, 0, world, width, height);
+        ctx.moveTo(start.sx, start.sy);
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const x = A + (B - A) * t;
+          const y = f(x);
+          const { sx, sy } = worldToScreen(x, y, world, width, height);
+          ctx.lineTo(sx, sy);
+        }
+        const end = worldToScreen(B, 0, world, width, height);
+        ctx.lineTo(end.sx, end.sy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawRectangles(ctx, world, width, height, n) {
+        const dx = (B - A) / n;
+        ctx.save();
+        ctx.fillStyle = COLORS.sumFill;
+        ctx.strokeStyle = COLORS.sumStroke;
+        ctx.lineWidth = 1;
+
+        for (let i = 0; i < n; i += 1) {
+          const x0 = A + i * dx;
+          const x1 = x0 + dx;
+          const h = f(x1);
+          const p0 = worldToScreen(x0, 0, world, width, height);
+          const p1 = worldToScreen(x1, h, world, width, height);
+          const rectX = p0.sx;
+          const rectY = p1.sy;
+          const rectW = Math.max(1, p1.sx - p0.sx);
+          const rectH = Math.max(0, p0.sy - p1.sy);
+          ctx.fillRect(rectX, rectY, rectW, rectH);
+          ctx.strokeRect(rectX, rectY, rectW, rectH);
+        }
+
+        ctx.restore();
+      }
+
+      function drawMainCurve(ctx, world, width, height) {
+        const samples = 900;
+        const points = [];
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const x = world.xMin + (world.xMax - world.xMin) * t;
+          points.push({ x, y: f(x) });
+        }
+        drawPolyline(ctx, points, world, width, height, COLORS.curve, 2.4);
+      }
+
+      function drawMainTickLabels(ctx, world, width, height) {
+        ctx.save();
+        ctx.fillStyle = COLORS.text;
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        [0, 2, 4, 6, 8].forEach((x) => {
+          const { sx, sy } = worldToScreen(x, 0, world, width, height);
+          ctx.fillText(String(x), sx, Math.min(height - 16, sy + 6));
+        });
+
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        [0, 1, 2].forEach((y) => {
+          const { sy } = worldToScreen(0, y, world, width, height);
+          ctx.fillText(String(y), 8, sy);
+        });
+        ctx.restore();
+      }
+
+      function drawMainBoundaryGuides(ctx, world, width, height) {
+        ctx.save();
+        ctx.setLineDash([6, 6]);
+        ctx.strokeStyle = COLORS.axis;
+        ctx.lineWidth = 1;
+        [A, B].forEach((x) => {
+          const pTop = worldToScreen(x, world.yMax, world, width, height);
+          const pBottom = worldToScreen(x, 0, world, width, height);
+          ctx.beginPath();
+          ctx.moveTo(pTop.sx, pTop.sy);
+          ctx.lineTo(pBottom.sx, pBottom.sy);
+          ctx.stroke();
+        });
+        ctx.restore();
+      }
+
+      function drawAreaPlot() {
+        const { ctx, width, height } = resizeCanvas(areaCanvas);
+        clearCanvas(ctx, width, height);
+
+        const world = {
+          xMin: -0.35,
+          xMax: 8.35,
+          yMin: 0,
+          yMax: 2.45,
+        };
+
+        drawGrid(ctx, width, height, world);
+        drawAxesAtZero(ctx, width, height, world);
+        fillExactArea(ctx, world, width, height);
+        drawRectangles(ctx, world, width, height, state.n);
+        drawMainCurve(ctx, world, width, height);
+        drawMainTickLabels(ctx, world, width, height);
+        drawMainBoundaryGuides(ctx, world, width, height);
+        drawFrame(ctx, width, height);
+      }
+
+      function updateInfo() {
+        const n = state.n;
+        const dx = (B - A) / n;
+        const approx = APPROX_CACHE[n - 1];
+        const error = Math.abs(EXACT_AREA - approx);
+
+        sliderValue.textContent = `n = ${n}`;
+        dxLabel.textContent = `Δx = ${formatNumber(dx)}`;
+        approxLabel.textContent = `S_n = ${formatNumber(approx)}`;
+        exactLabel.textContent = `I = ${formatNumber(EXACT_AREA)}`;
+        errorLabel.textContent = `|I - S_n| = ${formatNumber(error)}`;
+      }
+
+      function render() {
+        state.pending = false;
+        updateInfo();
+        drawAreaPlot();
+      }
+
+      function requestRender() {
+        if (state.pending) {
+          return;
+        }
+        state.pending = true;
+        window.requestAnimationFrame(render);
+      }
+
+      partitionSlider.addEventListener("input", () => {
+        state.n = Number(partitionSlider.value);
+        requestRender();
+      });
+
+      window.addEventListener("resize", requestRender);
+      requestRender();
+    })();
+  </script>
+</body>
+
+ <footer class="site-footer">
+  <div class="app">
+    <div class="footer-actions">
+      <a class="button button-subtle" href="./index.html">第 1 回のページへ戻る</a>
+    </div>
+  </div>
+</footer>
+
+</html>
