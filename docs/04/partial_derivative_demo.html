@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>偏微分を観察する — 曲面の断面と接線</title>
+  <link rel="stylesheet" href="../assets/css/course.css" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      --bg: #f3f3f3;
+      --panel: #ffffff;
+      --text: #111111;
+      --muted: #555555;
+      --border: #cfcfcf;
+      --grid: #ededed;
+      --axis: #9a9a9a;
+      --surface: #9f9f9f;
+      --domain: #e8ebf3;
+      --point: #111111;
+      --xdir: #c63f3f;
+      --ydir: #2f67d8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .app {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 20px 34px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.7rem, 3vw, 2.5rem);
+      line-height: 1.18;
+      letter-spacing: 0.01em;
+    }
+
+    .lead {
+      margin: 0 0 18px;
+      max-width: 1080px;
+      line-height: 1.8;
+      color: #222222;
+      font-size: 1rem;
+    }
+
+    .controls.partial-controls {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) minmax(240px, 1fr) minmax(240px, 0.9fr) auto;
+      gap: 14px;
+      align-items: end;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px 18px;
+    }
+
+    .control-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .control-block label,
+    .control-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .range-row {
+      display: grid;
+      grid-template-columns: 1fr 86px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #444444;
+      cursor: pointer;
+    }
+
+    .small-note {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .status-badge,
+    button {
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      padding: 11px 15px;
+      font: inherit;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 86px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      text-align: center;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover { background: #f6f6f6; }
+
+    .radio-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      min-height: 46px;
+      align-items: center;
+      padding: 0 2px;
+    }
+
+    .radio-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .radio-row input { accent-color: #444444; }
+
+    .info-strip.partial-info {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .info-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 12px 14px;
+      min-height: 90px;
+    }
+
+    .info-card .label {
+      font-size: 0.84rem;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      display: inline-block;
+      flex: 0 0 auto;
+    }
+
+    .dot.point { background: var(--point); }
+    .dot.xdir { background: var(--xdir); }
+    .dot.ydir { background: var(--ydir); }
+    .dot.domain { background: var(--domain); border: 1px solid #adb4c4; }
+
+    .info-card .value {
+      margin-top: 8px;
+      font-size: 1.02rem;
+      font-weight: 800;
+      line-height: 1.45;
+      font-variant-numeric: tabular-nums;
+      word-break: break-word;
+    }
+
+    .value .sub {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #444444;
+    }
+
+    .panels.partial-panels {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.85fr);
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 18px 10px;
+    }
+
+    .panel-header h2 {
+      margin: 0 0 8px;
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
+
+    .panel-header p {
+      margin: 0;
+      line-height: 1.7;
+      color: #333333;
+      font-size: 0.95rem;
+    }
+
+    .plot-wrap {
+      padding: 14px;
+    }
+
+    .plot-box {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    #plot3d {
+      height: min(62vw, 600px);
+      min-height: 430px;
+    }
+
+    #plot2d {
+      height: 342px;
+    }
+
+    .formula-panel {
+      margin-top: 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+
+    .formula-title {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .formula-main,
+    .formula-detail {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      line-height: 1.7;
+      word-break: break-word;
+    }
+
+    .formula-main {
+      font-size: 0.98rem;
+      font-weight: 700;
+    }
+
+    .formula-detail {
+      margin-top: 6px;
+      font-size: 0.91rem;
+      color: #333333;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      margin-bottom: 0;
+      line-height: 1.8;
+    }
+
+    code {
+      background: #f1f1f1;
+      border: 1px solid #dedede;
+      border-radius: 7px;
+      padding: 0.16em 0.38em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    .plotly-notifier { display: none; }
+
+    @media (max-width: 1100px) {
+      .controls.partial-controls {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .info-strip.partial-info {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .panels.partial-panels {
+        grid-template-columns: 1fr;
+      }
+
+      #plot3d { height: 540px; }
+    }
+
+    @media (max-width: 640px) {
+      .app { padding: 20px 14px 26px; }
+
+      .controls.partial-controls,
+      .info-strip.partial-info {
+        grid-template-columns: 1fr;
+      }
+
+      .range-row {
+        grid-template-columns: 1fr 78px;
+      }
+
+      #plot3d {
+        height: 420px;
+        min-height: 360px;
+      }
+
+      #plot2d { height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>偏微分を観察する</h1>
+
+    <p class="lead">
+      二変数関数 <code>z = f(x,y) = 4 + 0.5x + 0.3y + sin(x)cos(y)</code> を例に，
+      <strong>片方の変数を固定して一変数関数として見る</strong>ことの意味をとらえます．
+    </p>
+
+    <section class="controls partial-controls" aria-label="操作パネル">
+      <div class="control-block">
+        <label for="sliderA">点の x 座標 a</label>
+        <div class="range-row">
+          <input id="sliderA" type="range" min="-2.4" max="2.4" step="0.05" value="0.8" />
+          <div id="valueA" class="status-badge">0.80</div>
+        </div>
+      </div>
+
+      <div class="control-block">
+        <label for="sliderB">点の y 座標 b</label>
+        <div class="range-row">
+          <input id="sliderB" type="range" min="-1.9" max="1.9" step="0.05" value="0.6" />
+          <div id="valueB" class="status-badge">0.60</div>
+        </div>
+      </div>
+
+      <div class="control-block">
+        <div class="control-title">2D 断面図</div>
+        <div class="radio-row" role="radiogroup" aria-label="2D断面図で見る方向">
+          <label><input type="radio" name="direction" value="x" checked /> x 方向</label>
+          <label><input type="radio" name="direction" value="y" /> y 方向</label>
+        </div>
+        <span class="small-note">下の断面図を，赤または青のどちらで見るかを切り替えます．</span>
+      </div>
+
+      <div class="control-block">
+        <label for="resetButton">状態</label>
+        <button id="resetButton" type="button">初期状態に戻す</button>
+      </div>
+    </section>
+
+    <section class="info-strip partial-info" aria-label="現在の状態">
+      <div class="info-card">
+        <div class="label"><span class="dot point"></span>現在の点</div>
+        <div class="value" id="pointLabel">(a,b) = (0.80, 0.60)</div>
+      </div>
+      <div class="info-card">
+        <div class="label"><span class="dot domain"></span>関数の値</div>
+        <div class="value" id="valueLabel">f(a,b) = 5.17</div>
+      </div>
+      <div class="info-card">
+        <div class="label"><span class="dot xdir"></span>x 方向の偏微分</div>
+        <div class="value" id="fxLabel">∂f/∂x = 1.08<span class="sub">0.5 + cos(a)cos(b)</span></div>
+      </div>
+      <div class="info-card">
+        <div class="label"><span class="dot ydir"></span>y 方向の偏微分</div>
+        <div class="value" id="fyLabel">∂f/∂y = -0.11<span class="sub">0.3 - sin(a)sin(b)</span></div>
+      </div>
+    </section>
+
+    <section class="panels partial-panels">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>曲面と断面</h2>
+          <p>
+            薄い長方形は <code>z=0</code> 平面上に描いた定義域です．
+            曲面上の黒い点を通る赤・青の線が，偏微分で見る一変数関数のグラフに対応します．
+          </p>
+        </div>
+        <div class="plot-wrap">
+          <div id="plot3d" class="plot-box" aria-label="偏微分を考える点と曲面の3Dグラフ"></div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>断面を一変数関数として見る</h2>
+          <p id="sectionDescription">
+            <code>y=b</code> を固定すると，<code>z=f(x,b)</code> という一変数関数になります．その接線の傾きが <code>∂f/∂x(a,b)</code> です．
+          </p>
+        </div>
+        <div class="plot-wrap">
+          <div id="plot2d" class="plot-box" aria-label="選択した断面の2Dグラフ"></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="formula-panel" aria-label="偏微分の定義との対応">
+      <div class="formula-title"></div>
+      <div class="formula-main" id="formulaMain">
+      </div>
+      <div class="formula-detail" id="formulaDetail">
+      </div>
+    </section>
+
+    <p class="footer-note">
+    </p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="app">
+      <div class="footer-actions">
+        <a class="button button-subtle" href="./index.html">第4回のページへ戻る</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (() => {
+      const X_MIN = -2.5;
+      const X_MAX = 2.5;
+      const Y_MIN = -2.0;
+      const Y_MAX = 2.0;
+      const Z_FLOOR = 0;
+      const Z_TOP = 6.8;
+      const GRID_X = 90;
+      const GRID_Y = 80;
+      const DISK_X = 12;
+      const DISK_Y = 10;
+
+      const sliderA = document.getElementById("sliderA");
+      const sliderB = document.getElementById("sliderB");
+      const valueA = document.getElementById("valueA");
+      const valueB = document.getElementById("valueB");
+      const resetButton = document.getElementById("resetButton");
+      const pointLabel = document.getElementById("pointLabel");
+      const valueLabel = document.getElementById("valueLabel");
+      const fxLabel = document.getElementById("fxLabel");
+      const fyLabel = document.getElementById("fyLabel");
+      const sectionDescription = document.getElementById("sectionDescription");
+      const formulaMain = document.getElementById("formulaMain");
+      const formulaDetail = document.getElementById("formulaDetail");
+
+      const colors = {
+        surface0: "#d8d8d8",
+        surface1: "#8e8e8e",
+        domain: "#e8ebf3",
+        domainLine: "#444444",
+        point: "#111111",
+        xdir: "#c63f3f",
+        ydir: "#2f67d8",
+        grid: "#eeeeee",
+        axis: "#dddddd"
+      };
+
+      const fmt = (v) => Number(v).toFixed(2);
+      const f = (x, y) => 4 + 0.5 * x + 0.3 * y + Math.sin(x) * Math.cos(y);
+      const fx = (x, y) => 0.5 + Math.cos(x) * Math.cos(y);
+      const fy = (x, y) => 0.3 - Math.sin(x) * Math.sin(y);
+
+      const state = { pending: false };
+
+      function linspace(start, stop, n) {
+        const arr = [];
+        if (n <= 1) return [start];
+        for (let i = 0; i < n; i += 1) {
+          arr.push(start + (stop - start) * i / (n - 1));
+        }
+        return arr;
+      }
+
+      function makeRectSurface(xMin, xMax, yMin, yMax, nx, ny, zFunc) {
+        const xVals = linspace(xMin, xMax, nx);
+        const yVals = linspace(yMin, yMax, ny);
+        const X = [];
+        const Y = [];
+        const Z = [];
+        for (const y of yVals) {
+          const rowX = [];
+          const rowY = [];
+          const rowZ = [];
+          for (const x of xVals) {
+            rowX.push(x);
+            rowY.push(y);
+            rowZ.push(zFunc(x, y));
+          }
+          X.push(rowX);
+          Y.push(rowY);
+          Z.push(rowZ);
+        }
+        return { X, Y, Z };
+      }
+
+      const surface = makeRectSurface(X_MIN, X_MAX, Y_MIN, Y_MAX, GRID_X, GRID_Y, f);
+      const domain = makeRectSurface(X_MIN, X_MAX, Y_MIN, Y_MAX, DISK_X, DISK_Y, () => Z_FLOOR);
+      const domainBorder = {
+        x: [X_MIN, X_MAX, X_MAX, X_MIN, X_MIN],
+        y: [Y_MIN, Y_MIN, Y_MAX, Y_MAX, Y_MIN],
+        z: [Z_FLOOR, Z_FLOOR, Z_FLOOR, Z_FLOOR, Z_FLOOR]
+      };
+
+      function xSliceData(a, b) {
+        const xs = linspace(X_MIN, X_MAX, 220);
+        return {
+          x: xs,
+          y: xs.map(() => b),
+          z: xs.map((x) => f(x, b))
+        };
+      }
+
+      function ySliceData(a, b) {
+        const ys = linspace(Y_MIN, Y_MAX, 220);
+        return {
+          x: ys.map(() => a),
+          y: ys,
+          z: ys.map((y) => f(a, y))
+        };
+      }
+
+      function tangentXData(a, b) {
+        const width = 0.85;
+        const x1 = Math.max(X_MIN, a - width);
+        const x2 = Math.min(X_MAX, a + width);
+        const xs = linspace(x1, x2, 52);
+        const z0 = f(a, b);
+        const slope = fx(a, b);
+        return {
+          x: xs,
+          y: xs.map(() => b),
+          z: xs.map((x) => z0 + slope * (x - a))
+        };
+      }
+
+      function tangentYData(a, b) {
+        const width = 0.85;
+        const y1 = Math.max(Y_MIN, b - width);
+        const y2 = Math.min(Y_MAX, b + width);
+        const ys = linspace(y1, y2, 52);
+        const z0 = f(a, b);
+        const slope = fy(a, b);
+        return {
+          x: ys.map(() => a),
+          y: ys,
+          z: ys.map((y) => z0 + slope * (y - b))
+        };
+      }
+
+      function make3DData(a, b) {
+        const z0 = f(a, b);
+        const xs = xSliceData(a, b);
+        const ys = ySliceData(a, b);
+        const tx = tangentXData(a, b);
+        const ty = tangentYData(a, b);
+
+        return [
+          {
+            type: "surface",
+            name: "曲面",
+            x: surface.X,
+            y: surface.Y,
+            z: surface.Z,
+            colorscale: [[0, colors.surface0], [1, colors.surface1]],
+            showscale: false,
+            opacity: 1.0,
+            hoverinfo: "skip",
+            lighting: { ambient: 0.76, diffuse: 0.80, roughness: 0.95, specular: 0.04 },
+            contours: { x: { show: false }, y: { show: false }, z: { show: false } }
+          },
+          {
+            type: "surface",
+            name: "定義域",
+            x: domain.X,
+            y: domain.Y,
+            z: domain.Z,
+            colorscale: [[0, colors.domain], [1, colors.domain]],
+            showscale: false,
+            opacity: 0.82,
+            hoverinfo: "skip",
+            contours: { x: { show: false }, y: { show: false }, z: { show: false } }
+          },
+          {
+            type: "scatter3d",
+            mode: "lines",
+            name: "定義域の境界",
+            x: domainBorder.x,
+            y: domainBorder.y,
+            z: domainBorder.z,
+            line: { color: colors.domainLine, width: 4 },
+            hoverinfo: "skip"
+          },
+          {
+            type: "scatter3d",
+            mode: "lines",
+            name: "y=b の断面",
+            x: xs.x,
+            y: xs.y,
+            z: xs.z,
+            line: { color: colors.xdir, width: 6 },
+            hoverinfo: "skip"
+          },
+          {
+            type: "scatter3d",
+            mode: "lines",
+            name: "x=a の断面",
+            x: ys.x,
+            y: ys.y,
+            z: ys.z,
+            line: { color: colors.ydir, width: 6 },
+            hoverinfo: "skip"
+          },
+          {
+            type: "scatter3d",
+            mode: "lines",
+            name: "x方向の接線",
+            x: tx.x,
+            y: tx.y,
+            z: tx.z,
+            line: { color: colors.xdir, width: 8 },
+            hoverinfo: "skip"
+          },
+          {
+            type: "scatter3d",
+            mode: "lines",
+            name: "y方向の接線",
+            x: ty.x,
+            y: ty.y,
+            z: ty.z,
+            line: { color: colors.ydir, width: 8 },
+            hoverinfo: "skip"
+          },
+          {
+            type: "scatter3d",
+            mode: "lines",
+            name: "z=0への投影",
+            x: [a, a],
+            y: [b, b],
+            z: [Z_FLOOR, z0],
+            line: { color: colors.point, width: 2 },
+            hoverinfo: "skip"
+          },
+          {
+            type: "scatter3d",
+            mode: "markers",
+            name: "偏微分を考える点",
+            x: [a],
+            y: [b],
+            z: [z0],
+            marker: { size: 4, color: colors.point },
+            hovertemplate: "(a,b,f(a,b))<br>a=%{x:.2f}<br>b=%{y:.2f}<br>z=%{z:.2f}<extra></extra>"
+          },
+          {
+            type: "scatter3d",
+            mode: "markers",
+            name: "定義域上の点",
+            x: [a],
+            y: [b],
+            z: [Z_FLOOR],
+            marker: { size: 3, color: colors.point, symbol: "circle-open" },
+            hoverinfo: "skip"
+          }
+        ];
+      }
+
+      function make3DLayout() {
+        return {
+          margin: { l: 0, r: 0, t: 8, b: 0 },
+          showlegend: false,
+          paper_bgcolor: "transparent",
+          scene: {
+            xaxis: {
+              title: "x",
+              range: [X_MIN, X_MAX],
+              showbackground: true,
+              backgroundcolor: "#fbfbfb",
+              gridcolor: colors.grid,
+              zerolinecolor: colors.axis
+            },
+            yaxis: {
+              title: "y",
+              range: [Y_MIN, Y_MAX],
+              showbackground: true,
+              backgroundcolor: "#fbfbfb",
+              gridcolor: colors.grid,
+              zerolinecolor: colors.axis
+            },
+            zaxis: {
+              title: "z",
+              range: [Z_FLOOR - 0.4, Z_TOP],
+              showbackground: true,
+              backgroundcolor: "#fbfbfb",
+              gridcolor: colors.grid,
+              zerolinecolor: colors.axis
+            },
+            aspectmode: "manual",
+            aspectratio: { x: 1, y: 0.82, z: 1.15 },
+            camera: { eye: { x: 1.65, y: -1.85, z: 0.95 } }
+          }
+        };
+      }
+
+      const config = {
+        responsive: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ["toImage", "lasso2d", "select2d"]
+      };
+
+      function selectedDirection() {
+        return document.querySelector('input[name="direction"]:checked').value;
+      }
+
+      function make2DData(a, b) {
+        const dir = selectedDirection();
+        const z0 = f(a, b);
+
+        if (dir === "x") {
+          const xs = linspace(X_MIN, X_MAX, 260);
+          const tx = tangentXData(a, b);
+          return {
+            traces: [
+              {
+                type: "scatter",
+                mode: "lines",
+                name: "z=f(x,b)",
+                x: xs,
+                y: xs.map((x) => f(x, b)),
+                line: { color: colors.xdir, width: 3 },
+                hoverinfo: "skip"
+              },
+              {
+                type: "scatter",
+                mode: "lines",
+                name: "接線",
+                x: tx.x,
+                y: tx.z,
+                line: { color: colors.xdir, width: 5 },
+                hoverinfo: "skip"
+              },
+              {
+                type: "scatter",
+                mode: "markers",
+                name: "点",
+                x: [a],
+                y: [z0],
+                marker: { color: colors.point, size: 6 },
+                hoverinfo: "skip"
+              }
+            ],
+            layout: {
+              xaxis: { title: "x", range: [X_MIN, X_MAX], zeroline: true, gridcolor: colors.grid, zerolinecolor: colors.axis },
+              yaxis: { title: "z", range: [Z_FLOOR, Z_TOP], zeroline: true, gridcolor: colors.grid, zerolinecolor: colors.axis },
+              annotations: [{
+                x: 0.02,
+                y: 0.98,
+                xref: "paper",
+                yref: "paper",
+                showarrow: false,
+                align: "left",
+                text: `y = b = ${fmt(b)} を固定`,
+                bgcolor: "rgba(255,255,255,0.82)",
+                bordercolor: "#dddddd",
+                borderwidth: 1,
+                borderpad: 5
+              }]
+            },
+            description: "<code>y=b</code> を固定すると，<code>z=4+0.5x+0.3b+sin(x)cos(b)</code> という一変数関数になります．その接線の傾きが <code>∂f/∂x(a,b)</code> です．",
+          };
+        }
+
+        const ys = linspace(Y_MIN, Y_MAX, 260);
+        const ty = tangentYData(a, b);
+        return {
+          traces: [
+            {
+              type: "scatter",
+              mode: "lines",
+              name: "z=f(a,y)",
+              x: ys,
+              y: ys.map((y) => f(a, y)),
+              line: { color: colors.ydir, width: 3 },
+              hoverinfo: "skip"
+            },
+            {
+              type: "scatter",
+              mode: "lines",
+              name: "接線",
+              x: ty.y,
+              y: ty.z,
+              line: { color: colors.ydir, width: 5 },
+              hoverinfo: "skip"
+            },
+            {
+              type: "scatter",
+              mode: "markers",
+              name: "点",
+              x: [b],
+              y: [z0],
+              marker: { color: colors.point, size: 6 },
+              hoverinfo: "skip"
+            }
+          ],
+          layout: {
+            xaxis: { title: "y", range: [Y_MIN, Y_MAX], zeroline: true, gridcolor: colors.grid, zerolinecolor: colors.axis },
+            yaxis: { title: "z", range: [Z_FLOOR, Z_TOP], zeroline: true, gridcolor: colors.grid, zerolinecolor: colors.axis },
+            annotations: [{
+              x: 0.02,
+              y: 0.98,
+              xref: "paper",
+              yref: "paper",
+              showarrow: false,
+              align: "left",
+              text: `x = a = ${fmt(a)} を固定`,
+              bgcolor: "rgba(255,255,255,0.82)",
+              bordercolor: "#dddddd",
+              borderwidth: 1,
+              borderpad: 5
+            }]
+          },
+          description: "<code>x=a</code> を固定すると，<code>z=4+0.5a+0.3y+sin(a)cos(y)</code> という一変数関数になります．その接線の傾きが <code>∂f/∂y(a,b)</code> です．",
+          formulaMain: "∂f/∂y(a,b) = lim[h→0] { f(a,b+h) - f(a,b) } / h",
+          formulaDetail: "今回の関数では ∂f/∂y(x,y)=0.3−sin(x)sin(y) なので，点 (a,b) での値は 0.3−sin(a)sin(b) です．"
+        };
+      }
+
+      function updateReadout(a, b) {
+        valueA.textContent = fmt(a);
+        valueB.textContent = fmt(b);
+        pointLabel.textContent = `(a,b) = (${fmt(a)}, ${fmt(b)})`;
+        valueLabel.textContent = `f(a,b) = ${fmt(f(a, b))}`;
+        fxLabel.innerHTML = `∂f/∂x = ${fmt(fx(a, b))}<span class="sub">0.5 + cos(a)cos(b)</span>`;
+        fyLabel.innerHTML = `∂f/∂y = ${fmt(fy(a, b))}<span class="sub">0.3 − sin(a)sin(b)</span>`;
+      }
+
+      function drawAll() {
+        const a = Number(sliderA.value);
+        const b = Number(sliderB.value);
+        updateReadout(a, b);
+
+        Plotly.react("plot3d", make3DData(a, b), make3DLayout(), config);
+
+        const cross = make2DData(a, b);
+        sectionDescription.innerHTML = cross.description;
+        formulaMain.textContent = cross.formulaMain;
+        formulaDetail.textContent = cross.formulaDetail;
+
+        const layout2D = Object.assign({
+          margin: { l: 50, r: 18, t: 20, b: 45 },
+          showlegend: false,
+          paper_bgcolor: "transparent",
+          plot_bgcolor: "#ffffff",
+          font: { family: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", color: "#111111" }
+        }, cross.layout);
+        Plotly.react("plot2d", cross.traces, layout2D, config);
+      }
+
+      function scheduleDraw() {
+        if (state.pending) return;
+        state.pending = true;
+        window.requestAnimationFrame(() => {
+          state.pending = false;
+          drawAll();
+        });
+      }
+
+      sliderA.addEventListener("input", scheduleDraw);
+      sliderB.addEventListener("input", scheduleDraw);
+      document.querySelectorAll('input[name="direction"]').forEach((el) => el.addEventListener("change", scheduleDraw));
+      resetButton.addEventListener("click", () => {
+        sliderA.value = "0.8";
+        sliderB.value = "0.6";
+        document.querySelector('input[name="direction"][value="x"]').checked = true;
+        scheduleDraw();
+      });
+      window.addEventListener("resize", scheduleDraw);
+      window.addEventListener("load", scheduleDraw);
+
+      drawAll();
+    })();
+  </script>
+</body>
+</html>
